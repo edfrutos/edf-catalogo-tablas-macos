@@ -1,0 +1,293 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using EDFCatalogoTablasNet.Services
+@using EDFCatalogoTablasNet.Components.Shared
+@inject IFileService FileService
+@inject IJSRuntime JSRuntime
+
+<div class="upload-file-component">
+    <div class="form-group mb-3">
+        <label class="form-label">
+            <i class="fas fa-@GetIconClass()"></i>
+            @Label
+        </label>
+
+        <!-- Pestañas para elegir entre URL y Archivo -->
+        <div class="nav nav-tabs mb-2" role="tablist">
+            <button class="nav-link @(InputMode == "url" ? "active" : "")"
+                    type="button"
+                    @onclick="@(() => SetInputMode("url"))">
+                <i class="fas fa-link"></i> URL
+            </button>
+            <button class="nav-link @(InputMode == "file" ? "active" : "")"
+                    type="button"
+                    @onclick="@(() => SetInputMode("file"))">
+                <i class="fas fa-upload"></i> Subir Archivo
+            </button>
+        </div>
+
+        @if (InputMode == "url")
+        {
+            <!-- Campo URL -->
+            <div class="input-group">
+                <span class="input-group-text">
+                    <i class="fas fa-link"></i>
+                </span>
+                <InputText class="form-control"
+                          @bind-Value="UrlValue"
+                          @bind-Value:after="OnUrlValueChanged"
+                          placeholder="@($"Introduce la URL del {FileType.ToLower()}")"/>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ValidationMessage))
+            {
+                <div class="text-danger small mt-1">
+                    <i class="fas fa-exclamation-triangle"></i> @ValidationMessage
+                </div>
+            }
+        }
+        else
+        {
+            <!-- Campo Archivo -->
+            <div class="mb-2">
+                <InputFile class="form-control"
+                          OnChange="HandleFileSelected"
+                          accept="@GetAcceptedTypes()" />
+                <div class="form-text">
+                    @GetHelpText()
+                </div>
+            </div>
+
+            @if (IsUploading)
+            {
+                <div class="d-flex align-items-center text-info mb-2">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    Subiendo archivo...
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(UploadMessage))
+            {
+                <div class="@($"text-{(UploadSuccess ? "success" : "danger")} small mt-1")">
+                    <i class="fas fa-@(UploadSuccess ? "check-circle" : "exclamation-triangle")"></i>
+                    @UploadMessage
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Vista previa -->
+    @if (!string.IsNullOrEmpty(CurrentValue))
+    {
+        <div class="preview-section mb-3">
+            <h6 class="text-muted">
+                <i class="fas fa-eye"></i> Vista previa:
+            </h6>
+            <div class="preview-container p-2 border rounded bg-light">
+                <MultimediaPreview Url="@CurrentValue" MaxWidth="200" MaxHeight="150" />
+
+                <div class="mt-2">
+                    <small class="text-muted">
+                        @if (CurrentValue.StartsWith("http"))
+                        {
+                            <text><i class="fas fa-link"></i> URL externa</text>
+                        }
+                        else
+                        {
+                            <text><i class="fas fa-file"></i> Archivo local</text>
+                        }
+                    </small>
+
+                    @if (!CurrentValue.StartsWith("http"))
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-danger ms-2"
+                                @onclick="RemoveFile">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string FileType { get; set; } = ""; // "imagen", "documento", "multimedia"
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private string InputMode { get; set; } = "url";
+    private string UrlValue { get; set; } = "";
+    private string CurrentValue => InputMode == "url" ? UrlValue : Value;
+
+    private bool IsUploading { get; set; } = false;
+    private string UploadMessage { get; set; } = "";
+    private bool UploadSuccess { get; set; } = false;
+    private string ValidationMessage { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        UrlValue = Value;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (InputMode == "url" && UrlValue != Value)
+        {
+            UrlValue = Value;
+        }
+    }
+
+    private async Task SetInputMode(string mode)
+    {
+        InputMode = mode;
+
+        if (mode == "url")
+        {
+            await ValueChanged.InvokeAsync(UrlValue);
+        }
+
+        ValidationMessage = "";
+        UploadMessage = "";
+        StateHasChanged();
+    }
+
+    private async Task OnUrlValueChanged()
+    {
+        await ValueChanged.InvokeAsync(UrlValue);
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        IsUploading = true;
+        UploadMessage = "";
+        UploadSuccess = false;
+        StateHasChanged();
+
+        try
+        {
+            // Validar archivo
+            if (!FileService.IsValidFile(file, FileType))
+            {
+                UploadMessage = GetValidationErrorMessage(file);
+                UploadSuccess = false;
+                return;
+            }
+
+            // Subir archivo
+            var filePath = await FileService.SaveFileAsync(file);
+
+            // Actualizar valor
+            await ValueChanged.InvokeAsync(filePath);
+
+            UploadMessage = "Archivo subido correctamente";
+            UploadSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            UploadMessage = $"Error al subir el archivo: {ex.Message}";
+            UploadSuccess = false;
+        }
+        finally
+        {
+            IsUploading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveFile()
+    {
+        if (!string.IsNullOrEmpty(Value) && !Value.StartsWith("http"))
+        {
+            await FileService.DeleteFileAsync(Value);
+        }
+
+        await ValueChanged.InvokeAsync("");
+        UploadMessage = "Archivo eliminado";
+        UploadSuccess = true;
+        StateHasChanged();
+    }
+
+    private string GetIconClass()
+    {
+        return FileType.ToLower() switch
+        {
+            "imagen" => "image",
+            "documento" => "file-alt",
+            "multimedia" => "play-circle",
+            _ => "file"
+        };
+    }
+
+    private string GetAcceptedTypes()
+    {
+        return FileType.ToLower() switch
+        {
+            "imagen" => "image/*,.bmp,.ico",
+            "documento" => ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.rtf,.md,.csv,.json,.xml",
+            "multimedia" => "video/*,audio/*,.aac,.flac",
+            _ => "*/*"
+        };
+    }
+
+    private string GetHelpText()
+    {
+        return FileType.ToLower() switch
+        {
+            "imagen" => "Formatos soportados: JPG, PNG, GIF, WebP, SVG, BMP, ICO. Tamaño máximo: 5MB",
+            "documento" => "Formatos soportados: PDF, Word, Excel, PowerPoint, TXT, RTF, MD, CSV, JSON, XML. Tamaño máximo: 10MB",
+            "multimedia" => "Formatos soportados: MP4, AVI, MOV, MP3, WAV, OGG, AAC, FLAC. Tamaño máximo: 50MB",
+            _ => "Selecciona un archivo válido"
+        };
+    }
+
+    private string GetValidationErrorMessage(IBrowserFile file)
+    {
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        var sizeMB = file.Size / (1024.0 * 1024.0);
+
+        return FileType.ToLower() switch
+        {
+            "imagen" when sizeMB > 5 => "La imagen no debe superar los 5MB",
+            "imagen" => "Formato de imagen no válido. Use JPG, PNG, GIF, WebP o SVG",
+            "documento" when sizeMB > 10 => "El documento no debe superar los 10MB",
+            "documento" => "Formato de documento no válido. Use PDF, Word, Excel, PowerPoint o TXT",
+            "multimedia" when sizeMB > 50 => "El archivo multimedia no debe superar los 50MB",
+            "multimedia" => "Formato multimedia no válido. Use MP4, AVI, MOV, MP3, WAV u OGG",
+            _ => "Archivo no válido"
+        };
+    }
+}
+
+<style>
+    .upload-file-component .nav-tabs .nav-link {
+        color: #6c757d;
+        border: 1px solid #dee2e6;
+        background: #f8f9fa;
+    }
+
+    .upload-file-component .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        background: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
+
+    .upload-file-component .nav-tabs .nav-link:hover {
+        border-color: #e9ecef #e9ecef #dee2e6;
+        isolation: isolate;
+    }
+
+    .preview-container {
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+</style>

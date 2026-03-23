@@ -1,0 +1,430 @@
+@page "/catalogs"
+@using EDFCatalogoTablasNet.Services
+@using EDFCatalogoTablasNet.Models
+@using EDFCatalogoTablasNet.Components.Shared
+@inject ICatalogService CatalogService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ILogger<CatalogList> Logger
+
+<PageTitle>Ver Catálogos - EDF Catálogo de Tablas</PageTitle>
+
+<div class="row">
+    <div class="col-12">
+        <!-- Header con breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/" class="text-decoration-none">
+                        <i class="fas fa-home me-1"></i>Inicio
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">
+                    <i class="fas fa-list me-1"></i>@(AuthService.CurrentUserRole == "Admin" ? "Todos los Catálogos" : "Mis Catálogos")
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Título y acciones -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="display-6 fw-bold mb-2">
+                    <i class="fas fa-list-alt me-2 text-primary"></i>
+                    @(AuthService.CurrentUserRole == "Admin" ? "Todos los Catálogos" : "Mis Catálogos")
+                </h1>
+                <p class="text-muted mb-0">
+                    @if (AuthService.CurrentUserRole == "Admin")
+                    {
+                        <text>Como administrador, puedes ver y gestionar todos los catálogos del sistema.</text>
+                    }
+                    else
+                    {
+                        <text>Aquí puedes ver todos tus catálogos creados y buscar el que necesites.</text>
+                    }
+                </p>
+            </div>
+            <div>
+                <a href="/create" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>Crear Nuevo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Barra de búsqueda amigable -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-white border-end-0">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control border-start-0"
+                                   placeholder="Buscar por nombre de catálogo..."
+                                   @bind="searchTerm"
+                                   @bind:event="oninput"
+                                   @onkeyup="FilterCatalogs" />
+                            @if (!string.IsNullOrEmpty(searchTerm))
+                            {
+                                <button class="btn btn-outline-secondary" type="button" @onclick="ClearSearch">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            @if (filteredCatalogs.Any())
+                            {
+                                @($"Mostrando {filteredCatalogs.Count()} de {allCatalogs.Count()} catálogos")
+                            }
+                            else if (!string.IsNullOrEmpty(searchTerm))
+                            {
+                                @("No se encontraron resultados")
+                            }
+                            else
+                            {
+                                @($"Total: {allCatalogs.Count()} catálogos")
+                            }
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <!-- Loading state -->
+    <div class="row">
+        <div class="col-12 text-center py-5">
+            <div class="loading-spinner mx-auto mb-3" style="width: 3rem; height: 3rem;"></div>
+            <p class="text-muted">Cargando tus catálogos...</p>
+        </div>
+    </div>
+}
+else if (!allCatalogs.Any())
+{
+    <!-- Estado vacío - sin catálogos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-folder-open fa-5x text-muted mb-4"></i>
+                <h3>¡Aún no tienes catálogos!</h3>
+                <p class="text-muted mb-4">
+                    Crea tu primer catálogo para empezar a organizar tu información.
+                    <br>
+                    ¡Es súper fácil y solo te tomará unos segundos!
+                </p>
+                <a href="/create" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>Crear Mi Primer Catálogo
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else if (!filteredCatalogs.Any() && !string.IsNullOrEmpty(searchTerm))
+{
+    <!-- No se encontraron resultados de búsqueda -->
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                <h3>No encontramos catálogos con ese nombre</h3>
+                <p class="text-muted mb-4">
+                    Intenta con otro término de búsqueda o
+                    <button class="btn btn-link p-0" @onclick="ClearSearch">limpia la búsqueda</button>
+                    para ver todos los catálogos.
+                </p>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Grid de catálogos -->
+    <div class="row">
+        @foreach (var catalog in filteredCatalogs)
+        {
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card h-100 shadow-sm catalog-card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-truncate">
+                            <i class="fas fa-table me-2"></i>@catalog.Name
+                        </h5>
+                        <small class="badge bg-light text-dark">
+                            ID: @catalog.Id
+                        </small>
+                    </div>
+
+                    <div class="card-body d-flex flex-column">
+                        <!-- Logo dentro del contenido -->
+                        @if (!string.IsNullOrEmpty(catalog.ImagenUrl))
+                        {
+                            <div class="text-center mb-3">
+                                <div style="height: 120px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                                    <img src="@catalog.ImagenUrl"
+                                         style="max-width: 100%; max-height: 100%; object-fit: contain;"
+                                         alt="Logo de @catalog.Name"
+                                         onerror="this.parentElement.style.display='none';" />
+                                </div>
+                            </div>
+                        }
+                        <p class="card-text flex-grow-1">
+                            @if (!string.IsNullOrEmpty(catalog.Description))
+                            {
+                                @(catalog.Description.Length > 120 ?
+                                  catalog.Description.Substring(0, 120) + "..." :
+                                  catalog.Description)
+                            }
+                            else
+                            {
+                                <span class="text-muted fst-italic">Sin descripción</span>
+                            }
+                        </p>
+
+                        @if (!string.IsNullOrEmpty(catalog.Category))
+                        {
+                            <div class="mb-3">
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-folder me-1"></i>@catalog.Category
+                                </span>
+                            </div>
+                        }
+
+                        <!-- Indicadores de multimedia -->
+                        @if (!string.IsNullOrEmpty(catalog.DocumentoUrl) || !string.IsNullOrEmpty(catalog.MultimediaUrl) || !string.IsNullOrEmpty(catalog.ImagenUrl))
+                        {
+                            <div class="mb-2">
+                                <small class="text-muted d-block mb-1">Recursos disponibles:</small>
+                                <div class="d-flex gap-1">
+                                    @if (!string.IsNullOrEmpty(catalog.DocumentoUrl))
+                                    {
+                                        <span class="badge bg-secondary" title="Documento disponible">
+                                            <i class="fas fa-file-alt"></i>
+                                        </span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(catalog.MultimediaUrl))
+                                    {
+                                        <span class="badge bg-info" title="Multimedia disponible">
+                                            <i class="fas fa-play-circle"></i>
+                                        </span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(catalog.ImagenUrl))
+                                    {
+                                        <span class="badge bg-success" title="Imagen disponible">
+                                            <i class="fas fa-image"></i>
+                                        </span>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mt-auto">
+                            <!-- Fechas -->
+                            <div class="mb-2">
+                                @if (catalog.Fecha.HasValue)
+                                {
+                                    <small class="text-primary">
+                                        <i class="fas fa-calendar-alt me-1"></i>
+                                        Fecha: @catalog.Fecha.Value.ToString("dd/MM/yyyy")
+                                    </small>
+                                    <br>
+                                }
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Creado: @catalog.CreatedAt.ToString("dd/MM/yyyy")
+                                </small>
+                            </div>
+
+                            <!-- Botones de acción -->
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="flex-grow-1"></div>
+                                <div class="btn-group" role="group">
+                                    <a href="/catalog/@catalog.Id" class="btn btn-sm btn-outline-primary" title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="/catalog/edit/@catalog.Id" class="btn btn-sm btn-outline-warning" title="Editar catálogo">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" title="Eliminar catálogo" @onclick="() => ShowDeleteModal(catalog)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Acciones adicionales -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <div class="card bg-light border-0">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-rocket me-2"></i>¿Quieres crear más catálogos?
+                    </h5>
+                    <p class="card-text text-muted">
+                        Organiza mejor tu información creando catálogos específicos para cada tipo de datos.
+                    </p>
+                    <a href="/create" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Crear Otro Catálogo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de confirmación de eliminación -->
+<DeleteCatalogModal
+    IsVisible="@showDeleteModal"
+    Catalog="@catalogToDelete"
+    IsDeleting="@isDeleting"
+    ErrorMessage="@deleteErrorMessage"
+    OnConfirm="@HandleDelete"
+    OnCancel="@HideDeleteModal" />
+
+<style>
+    .catalog-card {
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    }
+
+    .catalog-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+</style>
+
+@code {
+    private IEnumerable<Catalog> allCatalogs = new List<Catalog>();
+    private IEnumerable<Catalog> filteredCatalogs = new List<Catalog>();
+    private string searchTerm = string.Empty;
+    private bool isLoading = true;
+
+    // Variables para el modal de eliminación
+    private bool showDeleteModal = false;
+    private bool isDeleting = false;
+    private Catalog? catalogToDelete = null;
+    private string? deleteErrorMessage = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadCatalogs();
+        }
+        catch (Exception)
+        {
+            // En caso de error, mostrar lista vacía
+            allCatalogs = new List<Catalog>();
+            filteredCatalogs = new List<Catalog>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCatalogs()
+    {
+        var userEmail = AuthService.CurrentUserEmail;
+        var userRole = AuthService.CurrentUserRole;
+
+        // DEBUG: Log para diagnóstico
+        Logger.LogInformation("[CatalogList] LoadCatalogs - Email: '{Email}', Role: '{Role}'", userEmail ?? "NULL", userRole ?? "NULL");
+
+        allCatalogs = await CatalogService.GetAllCatalogsAsync(userEmail, userRole);
+
+        Logger.LogInformation("[CatalogList] Catálogos cargados: {Count}", allCatalogs != null ? allCatalogs.Count() : 0);
+
+        filteredCatalogs = allCatalogs;
+    }
+
+    private void FilterCatalogs()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredCatalogs = allCatalogs;
+        }
+        else
+        {
+            filteredCatalogs = allCatalogs.Where(c =>
+                c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(c.Category) && c.Category.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            );
+        }
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        searchTerm = string.Empty;
+        filteredCatalogs = allCatalogs;
+        StateHasChanged();
+    }
+
+    private void ShowDeleteModal(Catalog catalog)
+    {
+        catalogToDelete = catalog;
+        showDeleteModal = true;
+        deleteErrorMessage = null;
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        catalogToDelete = null;
+        deleteErrorMessage = null;
+    }
+
+    private async Task HandleDelete()
+    {
+        if (catalogToDelete == null) return;
+
+        try
+        {
+            isDeleting = true;
+            deleteErrorMessage = null;
+
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+
+            var success = await CatalogService.DeleteCatalogAsync(catalogToDelete.Id, userEmail, userRole);
+
+            if (success)
+            {
+                // Recargar la lista de catálogos
+                await LoadCatalogs();
+                FilterCatalogs();
+
+                // Cerrar el modal
+                HideDeleteModal();
+            }
+            else
+            {
+                deleteErrorMessage = "No se pudo eliminar el catálogo. Verifica que tienes permisos para eliminarlo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            deleteErrorMessage = $"Error al eliminar el catálogo: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+}

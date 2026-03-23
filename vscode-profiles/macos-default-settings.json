@@ -1,0 +1,97 @@
+{
+    "//": "=== CONFIGURACIÓN COMÚN MULTIPLATAFORMA (HEREDADA) ===",
+    "workbench.editor.empty.hint": "hidden",
+    "security.workspace.trust.untrustedFiles": "open",
+    "editor.inlineSuggest.showToolbar": "always",
+    "editor.unicodeHighlight.nonBasicASCII": false,
+    "git.enableSmartCommit": true,
+    "git.autofetch": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    
+    "//": "=== FORMATTERS COMUNES ===",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[dockercompose]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": false,
+            "strings": true
+        },
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    
+    "//": "=== CONFIGURACIONES ESPECÍFICAS DE MACOS ===",
+    "terminal.integrated.defaultProfile.osx": "bash",
+    "terminal.integrated.env.osx": {},
+    
+    "//": "=== RUTAS Y CONFIGURACIONES ESPECÍFICAS DE MACOS ===",
+    "remote.SSH.remotePlatform": {
+        "*.gitpod.io": "linux",
+        "208.76.221.20": "linux"
+    },
+    
+    "//": "=== CONFIGURACIONES AVANZADAS (MACOS) ===",
+    "pieces.cloudCapabilities": "Blended",
+    "pieces.telemetry": true,
+    "pieces.OS.launchOnStartup": "Yes",
+    "amazonQ.suppressPrompts": {
+        "amazonQChatDisclaimer": true
+    },
+    
+    "//": "=== AZURE CONFIGURACIONES (MACOS DEVELOPMENT) ===",
+    "@azure.argTenant": "",
+    "azureResourceGroups.selectedSubscriptions": [
+        "c5e01876-01a0-42cf-b222-231fc0351fce/85ea9d78-3373-48ac-94ee-1ccbeb7196dd"
+    ],
+    
+    "//": "=== HERRAMIENTAS DE DESARROLLO ESPECÍFICAS MACOS ===",
+    "tabnine.experimentalAutoImports": true,
+    "bitoAI.codeCompletion.enableAutoCompletion": false,
+    "bitoAI.codeCompletion.enableCommentToCode": true,
+    "geminicodeassist.project": "gen-lang-client-0659583210",
+    "geminicodeassist.inlineSuggestions.enableAuto": false,
+    
+    "//": "=== CONFIGURACIONES COMUNES MANTENIDAS ===",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.debugging.debugJustMyCode": false,
+    
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "github.copilot.advanced": {
+        "terminal.enableTerminalCommands": true,
+        "debug.enableDebuggerCommands": true,
+        "search.enableFullFileSearch": true
+    },
+    "github.copilot.chat": {
+        "enableAI": true,
+        "enableCodeAnalysis": true,
+        "enableContextualSuggestions": true,
+        "localeOverride": "es"
+    },
+    
+    "cSpell.userWords": [
+        "faltan",
+        "geeksforgeeks",
+        "myqr",
+        "pyqrcode",
+        "strftime",
+        "catalogotablas"
+    ]
+}

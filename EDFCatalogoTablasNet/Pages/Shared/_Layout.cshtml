@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - EDF Catálogo de Tablas</title>
+    <base href="~/" />
+
+    <!-- Favicon - EDF Developer -->
+    <link rel="icon" type="image/png" sizes="32x32" href="~/favicon.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="~/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="~/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="~/favicon.png" />
+    <meta name="msapplication-TileImage" content="~/favicon.png" />
+    <meta name="msapplication-TileColor" content="#1a4d7c" />
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Font Awesome for extra icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Blazor CSS -->
+    <link href="_framework/blazor.server.js" rel="preload" as="script" />
+
+    <style>
+        :root {
+            --primary-color: #0066cc;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.3rem;
+        }
+
+        .card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn {
+            border-radius: 8px;
+            font-weight: 500;
+            padding: 10px 20px;
+        }
+
+        .main-content {
+            min-height: calc(100vh - 140px);
+        }
+
+        .footer {
+            background-color: var(--dark-color);
+            color: white;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .help-text {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .required {
+            color: var(--danger-color);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @@keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+    </style>
+</head>
+<body>
+    @RenderBody()
+
+    <div id="blazor-error-ui" style="display: none;">
+        <div class="alert alert-danger" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>¡Ups! Algo salió mal</strong>
+            <br>
+            Ha ocurrido un error inesperado. Puede intentar recargar la página.
+            <button class="btn btn-sm btn-outline-danger ms-2" onclick="window.location.reload()">
+                <i class="fas fa-redo me-1"></i>Recargar
+            </button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Blazor Server JS -->
+    <script src="_framework/blazor.server.js"></script>
+    <!-- Catalog Utils JS -->
+    <script src="~/js/catalog-utils.js"></script>
+</body>
+</html>

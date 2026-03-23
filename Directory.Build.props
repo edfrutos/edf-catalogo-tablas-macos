@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <!-- Suppress specific analyzer warnings -->
+    <NoWarn>$(NoWarn);RZ10012</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Razor analyzer rules -->
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>true</EnableDefaultEmbeddedResourceItems>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,25 @@
+{
+  "MD040": false,
+  "MD026": false,
+  "MD032": false,
+  "MD022": {
+    "lines_above": 1,
+    "lines_below": 0
+  },
+  "MD047": true,
+  "line-length": {
+    "line_length": 120,
+    "heading_line_length": 80,
+    "code_block_line_length": 120,
+    "tables": false
+  },
+  "MD033": {
+    "allowed_elements": ["details", "summary", "kbd", "sup", "sub"]
+  },
+  "MD029": {
+    "style": "ordered"
+  },
+  "MD012": {
+    "maximum": 2
+  }
+}

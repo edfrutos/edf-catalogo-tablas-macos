@@ -1,0 +1,221 @@
+@page "/register"
+@layout EmptyLayout
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Registrarse - EDF Catálogo de Tablas</PageTitle>
+
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div class="row justify-content-center w-100">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <i class="fas fa-user-plus fa-3x mb-3"></i>
+                    <h3 class="mb-0">Crear Cuenta</h3>
+                    <p class="mb-0 opacity-75">Únete a EDF Catálogo de Tablas</p>
+                </div>
+                <div class="card-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @errorMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@registerModel" OnValidSubmit="@HandleRegister" FormName="RegisterForm">
+                        <DataAnnotationsValidator />
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-user me-2"></i>Nombre Completo *
+                                </label>
+                                <InputText @bind-Value="registerModel.Name"
+                                          class="form-control form-control-lg"
+                                          id="name"
+                                          placeholder="Tu nombre completo"
+                                          disabled="@isLoading" />
+                                <ValidationMessage For="@(() => registerModel.Name)" class="text-danger small" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-2"></i>Email *
+                            </label>
+                            <InputText @bind-Value="registerModel.Email"
+                                      class="form-control form-control-lg"
+                                      id="email"
+                                      placeholder="tu.email@empresa.com"
+                                      disabled="@isLoading" />
+                            <ValidationMessage For="@(() => registerModel.Email)" class="text-danger small" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>Contraseña *
+                                </label>
+                                <div class="input-group">
+                                    <InputText @bind-Value="registerModel.Password"
+                                              type="@(showPassword ? "text" : "password")"
+                                              class="form-control form-control-lg"
+                                              id="password"
+                                              placeholder="Mínimo 6 caracteres"
+                                              disabled="@isLoading" />
+                                    <button class="btn btn-outline-secondary" type="button" @onclick="TogglePasswordVisibility">
+                                        <i class="fas @(showPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                    </button>
+                                </div>
+                                <ValidationMessage For="@(() => registerModel.Password)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirmPassword" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>Confirmar Contraseña *
+                                </label>
+                                <div class="input-group">
+                                    <InputText @bind-Value="registerModel.ConfirmPassword"
+                                              type="@(showConfirmPassword ? "text" : "password")"
+                                              class="form-control form-control-lg"
+                                              id="confirmPassword"
+                                              placeholder="Repite tu contraseña"
+                                              disabled="@isLoading" />
+                                    <button class="btn btn-outline-secondary" type="button" @onclick="ToggleConfirmPasswordVisibility">
+                                        <i class="fas @(showConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                    </button>
+                                </div>
+                                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" class="text-danger small" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">
+                                    <i class="fas fa-phone me-2"></i>Teléfono (Opcional)
+                                </label>
+                                <InputText @bind-Value="registerModel.Phone"
+                                          class="form-control form-control-lg"
+                                          id="phone"
+                                          placeholder="+34 123 456 789"
+                                          disabled="@isLoading" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="company" class="form-label">
+                                    <i class="fas fa-building me-2"></i>Empresa (Opcional)
+                                </label>
+                                <InputText @bind-Value="registerModel.Company"
+                                          class="form-control form-control-lg"
+                                          id="company"
+                                          placeholder="Nombre de tu empresa"
+                                          disabled="@isLoading" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <InputCheckbox @bind-Value="registerModel.AcceptTerms"
+                                          class="form-check-input"
+                                          id="acceptTerms"
+                                          disabled="@isLoading" />
+                            <label class="form-check-label" for="acceptTerms">
+                                Acepto los <a href="#" class="text-primary">términos y condiciones</a> y la <a href="#" class="text-primary">política de privacidad</a> *
+                            </label>
+                            <ValidationMessage For="@(() => registerModel.AcceptTerms)" class="text-danger small" />
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-success btn-lg" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Creando cuenta...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-user-plus me-2"></i>
+                                    <span>Crear Mi Cuenta</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="card-footer bg-light text-center">
+                    <p class="mb-2">¿Ya tienes una cuenta?</p>
+                    <a href="/login" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                    </a>
+                    <a href="/contact" class="btn btn-outline-secondary">
+                        <i class="fas fa-envelope me-2"></i>Contacto
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RegisterModel registerModel = new RegisterModel();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Si ya está autenticado, redirigir al home
+        if (AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            // Verificar si el email ya existe
+            if (await AuthService.EmailExistsAsync(registerModel.Email))
+            {
+                errorMessage = "Ya existe una cuenta con este email. Por favor, usa otro email o inicia sesión.";
+                return;
+            }
+
+            // Intentar registrar el usuario
+            var success = await AuthService.RegisterAsync(registerModel);
+
+            if (success)
+            {
+                // Registro exitoso, redirigir al login con mensaje de éxito
+                // Usar forceLoad: true para forzar redirección completa del navegador
+                Navigation.NavigateTo("/login?registered=true", forceLoad: true);
+            }
+            else
+            {
+                errorMessage = "Error al crear la cuenta. Por favor, inténtalo de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al registrar usuario: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        showConfirmPassword = !showConfirmPassword;
+    }
+}

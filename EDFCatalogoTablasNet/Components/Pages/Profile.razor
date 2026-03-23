@@ -1,0 +1,532 @@
+@page "/profile"
+@using EDFCatalogoTablasNet.Models
+@using EDFCatalogoTablasNet.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IAuthService AuthService
+@inject IFileService FileService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Mi Perfil - EDF Catálogo de Tablas</PageTitle>
+
+@if (!AuthService.IsAuthenticated)
+{
+    <div class="container mt-5">
+        <div class="alert alert-warning text-center">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+            <h4>Debes iniciar sesión</h4>
+            <p>Para ver tu perfil debes estar autenticado.</p>
+            <a href="/login" class="btn btn-primary mt-3">Iniciar Sesión</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="mb-0">
+                    <i class="fas fa-user-circle text-primary me-2"></i>
+                    Mi Perfil
+                </h2>
+                <p class="text-muted">Gestiona tu información personal y preferencias</p>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2 text-muted">Cargando tu perfil...</p>
+            </div>
+        }
+        else if (currentUser == null)
+        {
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                No se pudo cargar tu perfil. Por favor, intenta más tarde.
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <!-- Panel izquierdo - Imagen de perfil -->
+                <div class="col-md-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-3">Foto de Perfil</h5>
+
+                            <div class="position-relative mb-2">
+                                @if (!string.IsNullOrEmpty(profileRequest.ProfileImageUrl))
+                                {
+                                    <img src="@profileRequest.ProfileImageUrl"
+                                         alt="Foto de perfil"
+                                         class="profile-image"
+                                         style="cursor: pointer;"
+                                         @onclick="TriggerFileInput" />
+                                    <div class="profile-image-overlay" @onclick="TriggerFileInput">
+                                        <i class="fas fa-camera fa-2x"></i>
+                                        <p class="mb-0 mt-2">Click para cambiar</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="profile-image-placeholder"
+                                         style="cursor: pointer;"
+                                         @onclick="TriggerFileInput">
+                                        <i class="fas fa-camera fa-3x text-muted mb-2"></i>
+                                        <p class="text-muted mb-0">Click aquí</p>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="d-grid gap-2 mb-3">
+                                <button type="button"
+                                        class="btn btn-primary btn-sm"
+                                        @onclick="TriggerFileInput"
+                                        disabled="@isUploadingImage">
+                                    <i class="fas fa-upload me-1"></i>
+                                    Subir Imagen
+                                </button>
+                            </div>
+
+                            <InputFile id="profileImageInput"
+                                       OnChange="@HandleImageUpload"
+                                       accept="image/*"
+                                       class="d-none"
+                                       disabled="@isUploadingImage" />
+
+                            @if (isUploadingImage)
+                            {
+                                <div class="text-center mb-3">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Subiendo...</span>
+                                    </div>
+                                    <small class="d-block text-muted">Subiendo imagen...</small>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(uploadErrorMessage))
+                            {
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <small>@uploadErrorMessage</small>
+                                    <button type="button" class="btn-close" @onclick="@(() => uploadErrorMessage = string.Empty)"></button>
+                                </div>
+                            }
+
+                            <hr class="my-3" />
+
+                            <div class="mb-0">
+                                <label class="form-label text-muted small">
+                                    <i class="fas fa-link me-1"></i>
+                                    O introduce la URL de una imagen:
+                                </label>
+                                <input type="url"
+                                       class="form-control form-control-sm"
+                                       @bind="profileRequest.ProfileImageUrl"
+                                       placeholder="https://ejemplo.com/imagen.jpg"
+                                       disabled="@isSaving" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <div class="card shadow-sm mt-3">
+                        <div class="card-body">
+                            <h6 class="card-title">Información de Cuenta</h6>
+                            <hr>
+                            <p class="mb-1">
+                                <strong>Email:</strong><br>
+                                <span class="text-muted">@currentUser.Email</span>
+                            </p>
+                            <p class="mb-1">
+                                <strong>Rol:</strong><br>
+                                @if (currentUser.Role == "Admin")
+                                {
+                                    <span class="badge bg-danger">Administrador</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-primary">Usuario</span>
+                                }
+                            </p>
+                            <p class="mb-1">
+                                <strong>Miembro desde:</strong><br>
+                                <span class="text-muted">@currentUser.CreatedAt.ToString("dd/MM/yyyy")</span>
+                            </p>
+                            @if (currentUser.LastLoginAt.HasValue)
+                            {
+                                <p class="mb-0">
+                                    <strong>Último acceso:</strong><br>
+                                    <span class="text-muted">@currentUser.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                </p>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel derecho - Formulario de datos -->
+                <div class="col-md-8">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-edit me-2"></i>
+                                Editar Información Personal
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    @errorMessage
+                                    <button type="button" class="btn-close" @onclick="@(() => errorMessage = string.Empty)"></button>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(successMessage))
+                            {
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    @successMessage
+                                    <button type="button" class="btn-close" @onclick="@(() => successMessage = string.Empty)"></button>
+                                </div>
+                            }
+
+                            <form @onsubmit="HandleUpdateProfile">
+                                <!-- Nombre -->
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-user me-1"></i>Nombre Completo *
+                                    </label>
+                                    <input type="text"
+                                           class="form-control form-control-lg"
+                                           @bind="profileRequest.Name"
+                                           required
+                                           disabled="@isSaving" />
+                                </div>
+
+                                <!-- Ocupación -->
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-briefcase me-1"></i>Ocupación / Cargo
+                                    </label>
+                                    <input type="text"
+                                           class="form-control"
+                                           @bind="profileRequest.Occupation"
+                                           placeholder="Ej: Desarrollador Full Stack"
+                                           disabled="@isSaving" />
+                                </div>
+
+                                <div class="row">
+                                    <!-- Empresa -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-building me-1"></i>Empresa
+                                        </label>
+                                        <input type="text"
+                                               class="form-control"
+                                               @bind="profileRequest.Company"
+                                               placeholder="Nombre de tu empresa"
+                                               disabled="@isSaving" />
+                                    </div>
+
+                                    <!-- Teléfono -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-phone me-1"></i>Teléfono
+                                        </label>
+                                        <input type="tel"
+                                               class="form-control"
+                                               @bind="profileRequest.Phone"
+                                               placeholder="+34 600 123 456"
+                                               disabled="@isSaving" />
+                                    </div>
+                                </div>
+
+                                <!-- Dirección -->
+                                <div class="mb-4">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marker-alt me-1"></i>Dirección Postal
+                                    </label>
+                                    <textarea class="form-control"
+                                              @bind="profileRequest.Address"
+                                              rows="2"
+                                              placeholder="Calle, número, ciudad, código postal..."
+                                              disabled="@isSaving"></textarea>
+                                </div>
+
+                                <!-- Botones -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            @onclick="LoadUserProfile"
+                                            disabled="@isSaving">
+                                        <i class="fas fa-undo me-1"></i>Descartar Cambios
+                                    </button>
+                                    <button type="submit"
+                                            class="btn btn-primary"
+                                            disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                            <span>Guardando...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-save me-1"></i>
+                                            <span>Guardar Cambios</span>
+                                        }
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<style>
+    .profile-image {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #e9ecef;
+        transition: opacity 0.3s;
+    }
+
+    .profile-image-placeholder {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        border: 4px solid #e9ecef;
+        transition: all 0.3s;
+    }
+
+    .profile-image-placeholder:hover {
+        background: #e9ecef;
+        border-color: #0d6efd;
+    }
+
+    .position-relative:hover .profile-image {
+        opacity: 0.7;
+    }
+
+    .profile-image-overlay {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        background: rgba(13, 110, 253, 0.8);
+        opacity: 0;
+        transition: opacity 0.3s;
+        cursor: pointer;
+    }
+
+    .position-relative:hover .profile-image-overlay {
+        opacity: 1;
+    }
+
+    .profile-image-placeholder {
+        cursor: pointer !important;
+    }
+
+    .profile-image {
+        cursor: pointer !important;
+    }
+</style>
+
+@code {
+    private User? currentUser;
+    private UpdateProfileRequest profileRequest = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isUploadingImage = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private string uploadErrorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            // Obtener el email del usuario actual desde la sesión
+            var userEmail = AuthService.CurrentUserEmail;
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                errorMessage = "No se pudo obtener la información del usuario. Por favor, inicia sesión nuevamente.";
+                return;
+            }
+
+            // Obtener el usuario completo usando UserService
+            currentUser = await UserService.GetUserByEmailAsync(userEmail);
+            if (currentUser != null)
+            {
+                profileRequest = new UpdateProfileRequest
+                {
+                    Name = currentUser.Name,
+                    Phone = currentUser.Phone,
+                    Company = currentUser.Company,
+                    ProfileImageUrl = currentUser.ProfileImageUrl,
+                    Address = currentUser.Address,
+                    Occupation = currentUser.Occupation
+                };
+            }
+            else
+            {
+                errorMessage = "No se pudo cargar la información del usuario";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar el perfil: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleUpdateProfile()
+    {
+        isSaving = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            if (currentUser == null || string.IsNullOrEmpty(currentUser.Id))
+            {
+                errorMessage = "Usuario no encontrado. Por favor, inicia sesión nuevamente.";
+                return;
+            }
+
+            var updatedUser = await UserService.UpdateProfileAsync(currentUser.Id, profileRequest);
+
+            if (updatedUser != null)
+            {
+                currentUser = updatedUser;
+                successMessage = "✅ Perfil actualizado correctamente";
+
+                // Scroll to top para ver el mensaje
+                await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+            }
+            else
+            {
+                errorMessage = "Error al actualizar el perfil. Por favor, intenta de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al actualizar el perfil: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task TriggerFileInput()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('profileImageInput').click()");
+        }
+        catch (Exception ex)
+        {
+            uploadErrorMessage = $"Error al abrir selector de archivos: {ex.Message}";
+        }
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        isUploadingImage = true;
+        uploadErrorMessage = string.Empty;
+
+        try
+        {
+            var imageFile = e.File;
+
+            // Validar que sea una imagen
+            if (!imageFile.ContentType.StartsWith("image/"))
+            {
+                uploadErrorMessage = "Por favor selecciona un archivo de imagen válido (JPG, PNG, GIF)";
+                return;
+            }
+
+            // Validar tamaño (máximo 5MB)
+            const long maxFileSize = 5 * 1024 * 1024; // 5MB
+            if (imageFile.Size > maxFileSize)
+            {
+                uploadErrorMessage = "La imagen es demasiado grande. Tamaño máximo: 5MB";
+                return;
+            }
+
+            // Subir imagen usando FileService
+            var imageUrl = await FileService.SaveFileAsync(imageFile);
+
+            if (!string.IsNullOrEmpty(imageUrl))
+            {
+                // Actualizar la URL de la imagen en el perfil
+                profileRequest.ProfileImageUrl = imageUrl;
+
+                // Guardar automáticamente
+                await HandleUpdateProfile();
+
+                if (string.IsNullOrEmpty(errorMessage))
+                {
+                    successMessage = "✅ Imagen de perfil actualizada correctamente";
+                }
+            }
+            else
+            {
+                uploadErrorMessage = "Error al subir la imagen. Por favor, intenta de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadErrorMessage = $"Error al subir imagen: {ex.Message}";
+        }
+        finally
+        {
+            isUploadingImage = false;
+        }
+    }
+}
+

@@ -1,0 +1,609 @@
+@using EDFCatalogoTablasNet.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+@inject IFileService FileService
+@inject ILogger<EditRowModal> Logger
+
+<!-- Modal para editar filas -->
+<div class="modal fade" id="@ModalId" tabindex="-1" aria-labelledby="@($"{ModalId}Label")" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="@($"{ModalId}Label")">
+                    <i class="fas fa-edit me-2"></i>Editar Fila #@(RowIndex + 1)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (CurrentRow != null && Headers != null && Headers.Length > 0)
+                {
+                    <div class="row">
+                        <!-- Campos de datos -->
+                        <div class="col-lg-8">
+                            <h6 class="mb-3"><i class="fas fa-table me-2"></i>Datos de la Fila</h6>
+                            <div class="row">
+                                @for (int i = 0; i < Headers.Length; i++)
+                                {
+                                    var header = Headers[i];
+                                    var currentValue = CurrentRow.Data.ContainsKey(header) ? CurrentRow.Data[header]?.ToString() ?? "" : "";
+
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">@header</label>
+                                        <input type="text"
+                                               class="form-control"
+                                               value="@currentValue"
+                                               @onchange="@((ChangeEventArgs e) => UpdateFieldValue(header, e.Value?.ToString()))"
+                                               placeholder="Ingrese @header.ToLower()" />
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Archivos -->
+                        <div class="col-lg-4">
+                            <h6 class="mb-3"><i class="fas fa-paperclip me-2"></i>Archivos Adjuntos</h6>
+
+                            <!-- Documentos -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label fw-bold mb-0">Documentos</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddDocumentField">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                @foreach (var (doc, index) in editingDocuments.Select((d, i) => (d, i)))
+                                {
+                                    <div class="d-flex align-items-center mb-2 gap-2">
+                                        @if (!string.IsNullOrEmpty(doc))
+                                        {
+                                            <div class="flex-grow-1">
+                                                <i class="fas fa-file-pdf text-danger me-2"></i>
+                                                <span class="text-muted small">@GetFileName(doc)</span>
+                                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="@(() => RemoveDocument(index))">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="flex-grow-1">
+                                                <InputFile class="form-control form-control-sm"
+                                                           OnChange="@((InputFileChangeEventArgs e) => HandleFileUploadMultiple(e, "document", index))"
+                                                           accept=".pdf,.doc,.docx,.txt,.rtf,.md,.csv,.json,.xml" />
+                                            </div>
+                                            @if (editingDocuments.Count > 1)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveDocument(index))">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Multimedia -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label fw-bold mb-0">Multimedia</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddMultimediaField">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                @foreach (var (media, index) in editingMultimedia.Select((m, i) => (m, i)))
+                                {
+                                    <div class="d-flex align-items-center mb-2 gap-2">
+                                        @if (!string.IsNullOrEmpty(media))
+                                        {
+                                            <div class="flex-grow-1">
+                                                <i class="fas fa-video text-primary me-2"></i>
+                                                <span class="text-muted small">@GetFileName(media)</span>
+                                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="@(() => RemoveMultimedia(index))">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="flex-grow-1">
+                                                <InputFile class="form-control form-control-sm"
+                                                           OnChange="@((InputFileChangeEventArgs e) => HandleFileUploadMultiple(e, "multimedia", index))"
+                                                           accept=".mp4,.avi,.mov,.webm,.mp3,.wav,.ogg,.aac,.flac" />
+                                            </div>
+                                            @if (editingMultimedia.Count > 1)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveMultimedia(index))">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Imágenes -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label fw-bold mb-0">Imágenes</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="AddImageField">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                @foreach (var (img, index) in editingImages.Select((i, idx) => (i, idx)))
+                                {
+                                    <div class="d-flex align-items-center mb-2 gap-2">
+                                        @if (!string.IsNullOrEmpty(img))
+                                        {
+                                            <div class="flex-grow-1">
+                                                <i class="fas fa-image text-success me-2"></i>
+                                                <span class="text-muted small">@GetFileName(img)</span>
+                                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="@(() => RemoveImage(index))">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="flex-grow-1">
+                                                <InputFile class="form-control form-control-sm"
+                                                           OnChange="@((InputFileChangeEventArgs e) => HandleFileUploadMultiple(e, "image", index))"
+                                                           accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.bmp,.ico" />
+                                            </div>
+                                            @if (editingImages.Count > 1)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveImage(index))">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <!-- Archivos Adicionales -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label fw-bold mb-0">Archivos Adicionales</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="AddAdditionalFile">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                @foreach (var (file, index) in editingAdditionalFiles.Select((f, i) => (f, i)))
+                                {
+                                    <div class="d-flex align-items-center mb-2 gap-2">
+                                        @if (!string.IsNullOrEmpty(file.FileUrl))
+                                        {
+                                            <div class="flex-grow-1">
+                                                <i class="@GetFileIcon(file.FileType) text-info me-2"></i>
+                                                <span class="text-muted small">@file.FileName</span>
+                                                @if (file.FileSize > 0)
+                                                {
+                                                    <small class="text-muted">(@FormatFileSize(file.FileSize))</small>
+                                                }
+                                                <button type="button" class="btn btn-sm btn-outline-danger ms-2" @onclick="@(() => RemoveAdditionalFile(index))">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="flex-grow-1">
+                                                <InputFile class="form-control form-control-sm"
+                                                           OnChange="@((InputFileChangeEventArgs e) => HandleAdditionalFileUpload(e, index))"
+                                                           accept="*/*" />
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="@(() => RemoveAdditionalFile(index))">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                                @if (editingAdditionalFiles.Count == 0)
+                                {
+                                    <div class="text-muted small text-center py-2">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        No hay archivos adicionales. Haz clic en "+" para agregar uno.
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (CurrentRow == null)
+                {
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="text-muted">Cargando información de la fila...</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <p class="text-muted">No se pudo cargar la información de la fila</p>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="SaveChanges" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span><i class="fas fa-spinner fa-spin me-2"></i>Guardando...</span>
+                    }
+                    else
+                    {
+                        <span><i class="fas fa-save me-2"></i>Guardar Cambios</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string ModalId { get; set; } = "editRowModal";
+    [Parameter] public CatalogRow? CurrentRow { get; set; }
+    [Parameter] public string[]? Headers { get; set; }
+    [Parameter] public int RowIndex { get; set; }
+    [Parameter] public EventCallback<CatalogRow> OnRowUpdated { get; set; }
+
+    private bool isSaving = false;
+    private CatalogRow? editingRow;
+    private Dictionary<string, string> fieldValues = new();
+
+    // Listas para archivos múltiples
+    private List<string> editingDocuments = new() { "" };
+    private List<string> editingMultimedia = new() { "" };
+    private List<string> editingImages = new() { "" };
+    private List<RowFileAttachment> editingAdditionalFiles = new();
+
+    protected override void OnParametersSet()
+    {
+        if (CurrentRow != null)
+        {
+            editingRow = new CatalogRow
+            {
+                Id = CurrentRow.Id,
+                Data = new Dictionary<string, object>(CurrentRow.Data),
+                Files = CurrentRow.Files != null ? new RowFiles
+                {
+                    Document = CurrentRow.Files.Document,
+                    Multimedia = CurrentRow.Files.Multimedia,
+                    Image = CurrentRow.Files.Image,
+                    Documents = new List<string>(CurrentRow.Files.Documents),
+                    MultimediaFiles = new List<string>(CurrentRow.Files.MultimediaFiles),
+                    Images = new List<string>(CurrentRow.Files.Images),
+                    AdditionalFiles = new List<RowFileAttachment>(CurrentRow.Files.AdditionalFiles)
+                } : new RowFiles(),
+                CreatedAt = CurrentRow.CreatedAt,
+                UpdatedAt = CurrentRow.UpdatedAt
+            };
+
+            // Inicializar listas de archivos para edición
+            editingDocuments = CurrentRow.Files?.Documents.Any() == true
+                ? new List<string>(CurrentRow.Files.Documents)
+                : (CurrentRow.Files?.Document != null ? new List<string> { CurrentRow.Files.Document } : new List<string> { "" });
+
+            editingMultimedia = CurrentRow.Files?.MultimediaFiles.Any() == true
+                ? new List<string>(CurrentRow.Files.MultimediaFiles)
+                : (CurrentRow.Files?.Multimedia != null ? new List<string> { CurrentRow.Files.Multimedia } : new List<string> { "" });
+
+            editingImages = CurrentRow.Files?.Images.Any() == true
+                ? new List<string>(CurrentRow.Files.Images)
+                : (CurrentRow.Files?.Image != null ? new List<string> { CurrentRow.Files.Image } : new List<string> { "" });
+
+            // Inicializar archivos adicionales
+            editingAdditionalFiles = CurrentRow.Files?.AdditionalFiles != null
+                ? new List<RowFileAttachment>(CurrentRow.Files.AdditionalFiles)
+                : new List<RowFileAttachment>();
+
+            // Inicializar valores de campos
+            fieldValues.Clear();
+            if (Headers != null)
+            {
+                foreach (var header in Headers)
+                {
+                    if (editingRow.Data.ContainsKey(header))
+                    {
+                        fieldValues[header] = editingRow.Data[header]?.ToString() ?? "";
+                    }
+                    else
+                    {
+                        fieldValues[header] = "";
+                    }
+                }
+            }
+        }
+    }
+
+    private void UpdateFieldValue(string fieldName, string? value)
+    {
+        if (editingRow != null)
+        {
+            editingRow.Data[fieldName] = value ?? "";
+        }
+    }
+
+    // Métodos para gestionar Documentos
+    private void AddDocumentField()
+    {
+        editingDocuments.Add("");
+        StateHasChanged();
+    }
+
+    private void RemoveDocument(int index)
+    {
+        if (index >= 0 && index < editingDocuments.Count)
+        {
+            editingDocuments.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    // Métodos para gestionar Multimedia
+    private void AddMultimediaField()
+    {
+        editingMultimedia.Add("");
+        StateHasChanged();
+    }
+
+    private void RemoveMultimedia(int index)
+    {
+        if (index >= 0 && index < editingMultimedia.Count)
+        {
+            editingMultimedia.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    // Métodos para gestionar Imágenes
+    private void AddImageField()
+    {
+        editingImages.Add("");
+        StateHasChanged();
+    }
+
+    private void RemoveImage(int index)
+    {
+        if (index >= 0 && index < editingImages.Count)
+        {
+            editingImages.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    // Métodos para gestionar Archivos Adicionales
+    private void AddAdditionalFile()
+    {
+        editingAdditionalFiles.Add(new RowFileAttachment
+        {
+            FileName = "",
+            FileUrl = "",
+            FileType = "document",
+            FileSize = 0
+        });
+        StateHasChanged();
+    }
+
+    private void RemoveAdditionalFile(int index)
+    {
+        if (index >= 0 && index < editingAdditionalFiles.Count)
+        {
+            editingAdditionalFiles.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleAdditionalFileUpload(InputFileChangeEventArgs e, int index)
+    {
+        var file = e.File;
+        if (file != null && file.Size > 0 && index >= 0 && index < editingAdditionalFiles.Count)
+        {
+            try
+            {
+                // Validar tamaño del archivo (10MB máximo)
+                if (file.Size > 10 * 1024 * 1024)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "El archivo es demasiado grande. El tamaño máximo permitido es 10MB.");
+                    return;
+                }
+
+                // Subir el archivo
+                var uploadedUrl = await FileService.SaveFileAsync(file);
+
+                // Actualizar el archivo adicional
+                editingAdditionalFiles[index].FileName = file.Name;
+                editingAdditionalFiles[index].FileUrl = uploadedUrl;
+                editingAdditionalFiles[index].FileSize = file.Size;
+                editingAdditionalFiles[index].FileType = GetFileTypeFromExtension(Path.GetExtension(file.Name));
+
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error al subir archivo adicional");
+                await JSRuntime.InvokeVoidAsync("alert", $"Error al subir el archivo: {ex.Message}");
+            }
+        }
+    }
+
+    private string GetFileTypeFromExtension(string extension)
+    {
+        return extension.ToLower() switch
+        {
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" or ".bmp" or ".ico" => "image",
+            ".mp4" or ".avi" or ".mov" or ".webm" => "video",
+            ".mp3" or ".wav" or ".ogg" or ".aac" or ".flac" => "audio",
+            ".pdf" or ".doc" or ".docx" or ".xls" or ".xlsx" or ".ppt" or ".pptx" or ".txt" or ".rtf" or ".md" or ".csv" or ".json" or ".xml" => "document",
+            _ => "file"
+        };
+    }
+
+    private string GetFileIcon(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "image" or "jpg" or "jpeg" or "png" or "gif" or "webp" or "svg" => "fas fa-image",
+            "multimedia" or "video" or "mp4" or "avi" or "mov" => "fas fa-video",
+            "audio" or "mp3" or "wav" or "ogg" => "fas fa-music",
+            "document" or "pdf" => "fas fa-file-pdf",
+            "doc" or "docx" => "fas fa-file-word",
+            "xls" or "xlsx" => "fas fa-file-excel",
+            "ppt" or "pptx" => "fas fa-file-powerpoint",
+            _ => "fas fa-file"
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes == 0) return "0 B";
+
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size = size / 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+
+    private async Task HandleFileUploadMultiple(InputFileChangeEventArgs e, string fileType, int index)
+    {
+        var file = e.File;
+        if (file != null && file.Size > 0)
+        {
+            try
+            {
+                // Validar tamaño del archivo según el tipo
+                long maxSize = fileType.ToLower() switch
+                {
+                    "image" => 5 * 1024 * 1024,  // 5MB
+                    "document" => 10 * 1024 * 1024, // 10MB
+                    "multimedia" => 50 * 1024 * 1024, // 50MB
+                    _ => 10 * 1024 * 1024
+                };
+
+                if (file.Size > maxSize)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", $"El archivo es demasiado grande. El tamaño máximo permitido es {maxSize / (1024 * 1024)}MB.");
+                    return;
+                }
+
+                // Subir el archivo
+                var uploadedUrl = await FileService.SaveFileAsync(file);
+
+                // Actualizar la lista correspondiente
+                switch (fileType.ToLower())
+                {
+                    case "document":
+                        if (index >= 0 && index < editingDocuments.Count)
+                        {
+                            editingDocuments[index] = uploadedUrl;
+                        }
+                        break;
+                    case "multimedia":
+                        if (index >= 0 && index < editingMultimedia.Count)
+                        {
+                            editingMultimedia[index] = uploadedUrl;
+                        }
+                        break;
+                    case "image":
+                        if (index >= 0 && index < editingImages.Count)
+                        {
+                            editingImages[index] = uploadedUrl;
+                        }
+                        break;
+                }
+
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error al subir archivo {FileType}", fileType);
+                await JSRuntime.InvokeVoidAsync("alert", $"Error al subir el archivo: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (editingRow == null) return;
+
+        try
+        {
+            isSaving = true;
+            StateHasChanged();
+
+            // Actualizar las listas de archivos en editingRow
+            editingRow.Files.Documents = editingDocuments.Where(d => !string.IsNullOrEmpty(d)).ToList();
+            editingRow.Files.MultimediaFiles = editingMultimedia.Where(m => !string.IsNullOrEmpty(m)).ToList();
+            editingRow.Files.Images = editingImages.Where(i => !string.IsNullOrEmpty(i)).ToList();
+            editingRow.Files.AdditionalFiles = editingAdditionalFiles.Where(f => !string.IsNullOrEmpty(f.FileUrl)).ToList();
+
+            // Mantener compatibilidad con campos legacy
+            editingRow.Files.Document = editingRow.Files.Documents.FirstOrDefault();
+            editingRow.Files.Multimedia = editingRow.Files.MultimediaFiles.FirstOrDefault();
+            editingRow.Files.Image = editingRow.Files.Images.FirstOrDefault();
+
+            // Actualizar fecha de modificación
+            editingRow.UpdatedAt = DateTime.UtcNow;
+
+            // Notificar directamente al componente padre
+            await OnRowUpdated.InvokeAsync(editingRow);
+
+            // Cerrar modal
+            await JSRuntime.InvokeVoidAsync("hideModal", ModalId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al guardar cambios de la fila");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetFileName(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return "";
+
+        var fileName = Path.GetFileName(url);
+        if (string.IsNullOrEmpty(fileName)) return "Archivo";
+
+        // Obtener la extensión del archivo
+        var extension = Path.GetExtension(fileName).ToLower();
+
+        // Si el nombre del archivo es un UUID, mostrar un nombre más amigable
+        if ((fileName.Length > 30) ||
+            (fileName.Length > 20 && !fileName.Contains(" ") && fileName.Contains("-")))
+        {
+            return extension switch
+            {
+                ".pdf" => "Documento PDF",
+                ".doc" or ".docx" => "Documento Word",
+                ".txt" => "Archivo de Texto",
+                ".md" => "Archivo Markdown",
+                ".csv" => "Archivo CSV",
+                ".json" => "Archivo JSON",
+                ".xml" => "Archivo XML",
+                ".mp4" or ".avi" or ".mov" or ".webm" => "Video",
+                ".mp3" or ".wav" or ".ogg" or ".aac" or ".flac" => "Audio",
+                ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" or ".bmp" => "Imagen",
+                _ => $"Archivo{extension}"
+            };
+        }
+
+        return fileName;
+    }
+}

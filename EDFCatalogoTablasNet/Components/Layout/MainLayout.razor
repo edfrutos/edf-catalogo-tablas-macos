@@ -1,0 +1,432 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components
+@using EDFCatalogoTablasNet.Services
+@using EDFCatalogoTablasNet.Components.Shared
+@using EDFCatalogoTablasNet.Models
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<!-- Navegación principal -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-table me-2"></i>
+            EDF Catálogo de Tablas
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">
+                        <i class="fas fa-home me-1"></i>Inicio
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/catalogs">
+                        <i class="fas fa-list me-1"></i>Ver Catálogos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/create">
+                        <i class="fas fa-plus me-1"></i>Crear Catálogo
+                    </a>
+                </li>
+                @if (AuthService.IsAuthenticated && AuthService.CurrentUserRole == "Admin")
+                {
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/users">
+                            <i class="fas fa-users-cog me-1"></i>Administración
+                        </a>
+                    </li>
+                }
+            </ul>
+
+            <ul class="navbar-nav">
+                @if (AuthService.IsAuthenticated)
+                {
+                    <!-- Usuario autenticado -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle me-1"></i>@currentUserName
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <span class="dropdown-item-text">
+                                    <small class="text-muted">
+                                        <i class="fas fa-envelope me-1"></i>@AuthService.CurrentUserEmail
+                                    </small>
+                                </span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="/profile">
+                                    <i class="fas fa-user-circle me-1"></i>Mi Perfil
+                                </a>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" @onclick="HandleLogout">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
+                                </button>
+                            </li>
+                        </ul>
+                    </li>
+                }
+                else
+                {
+                    <!-- Usuario no autenticado -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/test-login">
+                            <i class="fas fa-sign-in-alt me-1"></i>Iniciar Sesión
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">
+                            <i class="fas fa-user-plus me-1"></i>Registrarse
+                        </a>
+                    </li>
+                }
+
+                <!-- Menú de ayuda (siempre visible) -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-question-circle me-1"></i>Ayuda
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item" href="/help">
+                                <i class="fas fa-book me-1"></i>Guía de Usuario
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/api-docs" target="_blank">
+                                <i class="fas fa-code me-1"></i>API Técnica
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/contact">
+                                <i class="fas fa-envelope me-1"></i>Contacto
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="/about">
+                                <i class="fas fa-info-circle me-1"></i>Acerca de
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Contenido principal -->
+<main class="main-content">
+    <div class="container-fluid py-4">
+        @Body
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-0">
+                    <i class="fas fa-code me-1"></i>
+                    EDF Catálogo de Tablas - Versión .NET 9.0
+                </p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>
+                    @DateTime.Now.Year - Desarrollado con ❤️
+                </small>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Contenedor para notificaciones toast -->
+<div class="toast-container">
+    <!-- Los toasts se inyectarán aquí dinámicamente -->
+</div>
+
+    <!-- Modal global para visualizar archivos -->
+    <FileViewerModal ModalId="globalFileModal"
+                     Title="@currentModalTitle"
+                     FileUrl="@currentModalFileUrl"
+                     CurrentFile="@currentModalFile" />
+
+    <!-- Modal global para editar filas -->
+    <EditRowModal ModalId="globalEditRowModal"
+                  CurrentRow="@currentEditRow"
+                  Headers="@currentEditHeaders"
+                  RowIndex="@currentEditRowIndex"
+                  OnRowUpdated="@HandleGlobalRowUpdated" />
+
+@code {
+    [Parameter]
+    public RenderFragment? Body { get; set; }
+
+    // Variables para el modal global de archivos
+    public static string currentModalTitle = "Visualizar Archivo";
+    public static string? currentModalFileUrl = null;
+    public static RowFileAttachment? currentModalFile = null;
+
+    // Variables para el modal global de edición
+    public static CatalogRow? currentEditRow = null;
+    public static string[]? currentEditHeaders = null;
+    public static int currentEditRowIndex = -1;
+    public static DotNetObjectReference<object>? currentEditDotNetRef = null;
+
+    private string currentUserName = "Usuario";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Suscribirse a cambios en el estado de autenticación
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+
+        // Cargar datos del usuario actual si está autenticado
+        await LoadCurrentUser();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Configurar referencia global para JavaScript
+            await JSRuntime.InvokeVoidAsync("setBlazorMainLayoutRef", DotNetObjectReference.Create(this));
+        }
+    }
+
+    private async void OnAuthenticationStateChanged(object? sender, bool isAuthenticated)
+    {
+        await LoadCurrentUser();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCurrentUser()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            var user = await AuthService.GetCurrentUserAsync();
+            currentUserName = user?.Name ?? "Usuario";
+        }
+        else
+        {
+            currentUserName = "Usuario";
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        try
+        {
+            await AuthService.LogoutAsync();
+
+            // Mostrar mensaje de confirmación (opcional)
+            await JSRuntime.InvokeVoidAsync("console.log", "Sesión cerrada correctamente");
+
+            // Redirigir a login con forceLoad para navegar correctamente a Razor Page
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("console.error", $"Error al cerrar sesión: {ex.Message}");
+        }
+    }
+
+    private async Task HandleGlobalRowUpdated(CatalogRow updatedRow)
+    {
+        // Notificar al componente que llamó al modal
+        if (currentEditDotNetRef != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("invokeDotNetMethod", currentEditDotNetRef, "HandleRowUpdatedFromJS", updatedRow);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al notificar actualización de fila: {ex.Message}");
+            }
+        }
+
+        // Limpiar variables
+        currentEditRow = null;
+        currentEditHeaders = null;
+        currentEditRowIndex = -1;
+        currentEditDotNetRef?.Dispose();
+        currentEditDotNetRef = null;
+
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void UpdateEditModalData(CatalogRow rowData, string[] headers, int rowIndex, DotNetObjectReference<object> dotNetRef)
+    {
+        Console.WriteLine($"[UpdateEditModalData] Actualizando modal con datos: RowData={rowData != null}, Headers={headers?.Length ?? 0}, RowIndex={rowIndex}");
+
+        currentEditRow = rowData;
+        currentEditHeaders = headers;
+        currentEditRowIndex = rowIndex;
+        currentEditDotNetRef?.Dispose();
+        currentEditDotNetRef = dotNetRef;
+
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void UpdateFileModalData(string title, string fileUrl, string fileType)
+    {
+        currentModalTitle = title;
+        currentModalFileUrl = fileUrl;
+        currentModalFile = new RowFileAttachment
+        {
+            FileName = title,
+            FileUrl = fileUrl,
+            FileType = fileType
+        };
+
+        StateHasChanged();
+    }
+
+
+    public void Dispose()
+    {
+        // Desuscribirse del evento para evitar memory leaks
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+}
+
+<script>
+    // Almacenar instancias de modales para reutilización
+    window.modalInstances = window.modalInstances || {};
+
+    // Función para mostrar modales de Bootstrap
+    window.showModal = (modalId) => {
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+            // Verificar si ya tenemos una instancia almacenada
+            if (!window.modalInstances[modalId]) {
+                // Crear nueva instancia solo si no existe
+                window.modalInstances[modalId] = new bootstrap.Modal(modalElement, {
+                    backdrop: 'static',
+                    keyboard: false,
+                    focus: true
+                });
+            }
+
+            // Mostrar el modal usando la instancia almacenada
+            window.modalInstances[modalId].show();
+        } else {
+            console.error(`Modal con ID '${modalId}' no encontrado`);
+        }
+    };
+
+    // Función para ocultar modales de Bootstrap
+    window.hideModal = (modalId) => {
+        if (window.modalInstances && window.modalInstances[modalId]) {
+            window.modalInstances[modalId].hide();
+        }
+    };
+
+    // Función para mostrar modal de archivos con datos específicos
+    window.showFileModal = (fileUrl, fileName, fileType) => {
+        // Actualizar variables estáticas del modal directamente
+        if (window.blazorMainLayoutRef) {
+            window.blazorMainLayoutRef.invokeMethodAsync('UpdateFileModalData', fileName, fileUrl, fileType);
+        }
+
+        // Mostrar modal
+        window.showModal('globalFileModal');
+    };
+
+    // Función para mostrar modal de archivos con metadata
+    window.showFileModalWithMetadata = (fileData) => {
+        // Actualizar variables estáticas del modal directamente
+        if (window.blazorMainLayoutRef) {
+            window.blazorMainLayoutRef.invokeMethodAsync('UpdateFileModalData', fileData.fileName, fileData.fileUrl, fileData.fileType);
+        }
+
+        // Mostrar modal
+        window.showModal('globalFileModal');
+    };
+
+    // Función para configurar la referencia global de Blazor
+    window.setBlazorMainLayoutRef = (dotNetRef) => {
+        window.blazorMainLayoutRef = dotNetRef;
+    };
+
+    // Función para mostrar modal de edición global
+    window.showEditModal = async (rowData, headers, rowIndex, dotNetRef) => {
+        console.log('showEditModal called with:', { rowData, headers, rowIndex });
+
+        // Actualizar variables estáticas del modal directamente
+        if (window.blazorMainLayoutRef) {
+            await window.blazorMainLayoutRef.invokeMethodAsync('UpdateEditModalData', rowData, headers, rowIndex, dotNetRef);
+        }
+
+        // Mostrar modal después de actualizar los datos
+        window.showModal('globalEditRowModal');
+
+        // El callback se manejará desde el botón "Guardar Cambios" del modal
+        // No se llama automáticamente al cerrar el modal
+    };
+
+    // Manejar eventos de modales para evitar problemas de aria-hidden
+    window.addEventListener('show.bs.modal', function (event) {
+        const modal = event.target;
+
+        // Remover aria-hidden inmediatamente
+        modal.removeAttribute('aria-hidden');
+
+        // Asegurar que el modal tenga focus correcto después de que se muestre
+        setTimeout(() => {
+            // Buscar el primer elemento enfocable que no sea el botón de cerrar
+            const focusableElements = modal.querySelectorAll('input:not([type="hidden"]), button:not(.btn-close), select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusableElements.length > 0) {
+                // Enfocar el primer input o el segundo botón (evitando el btn-close)
+                const firstInput = modal.querySelector('input:not([type="hidden"])');
+                if (firstInput) {
+                    firstInput.focus();
+                } else if (focusableElements.length > 1) {
+                    focusableElements[1].focus();
+                }
+            }
+        }, 150);
+    });
+
+    // Limpiar cuando se ocultan los modales
+    window.addEventListener('hide.bs.modal', function (event) {
+        const modal = event.target;
+        // Remover el foco antes de cerrar
+        if (document.activeElement && modal.contains(document.activeElement)) {
+            document.activeElement.blur();
+        }
+    });
+
+    // Limpiar instancias cuando se cierran los modales
+    window.addEventListener('hidden.bs.modal', function (event) {
+        const modal = event.target;
+        // Asegurar que aria-hidden esté removido
+        modal.removeAttribute('aria-hidden');
+        // Restaurar el foco al body o al elemento anterior
+        document.body.focus();
+    });
+
+    // Función para invocar métodos .NET desde JavaScript
+    window.invokeDotNetMethod = (dotNetRef, methodName, ...args) => {
+        if (dotNetRef && typeof dotNetRef.invokeMethodAsync === 'function') {
+            return dotNetRef.invokeMethodAsync(methodName, ...args);
+        } else {
+            console.error('DotNetObjectReference no válida o método no disponible');
+        }
+    };
+</script>

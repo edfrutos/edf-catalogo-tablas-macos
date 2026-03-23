@@ -1,0 +1,512 @@
+@page "/admin/users"
+@using EDFCatalogoTablasNet.Models
+@using EDFCatalogoTablasNet.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IAuthService AuthService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Gestión de Usuarios - EDF Catálogo de Tablas</PageTitle>
+
+@if (!AuthService.IsAuthenticated || AuthService.CurrentUserRole != "Admin")
+{
+    <div class="container mt-5">
+        <div class="alert alert-danger text-center">
+            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+            <h4>Acceso Denegado</h4>
+            <p>No tienes permisos para acceder a esta página. Solo los administradores pueden gestionar usuarios.</p>
+            <a href="/" class="btn btn-primary mt-3">Volver al Inicio</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-0">
+                            <i class="fas fa-users-cog text-primary me-2"></i>
+                            Gestión de Usuarios
+                        </h2>
+                        <p class="text-muted mb-0">Administra usuarios, roles y permisos del sistema</p>
+                    </div>
+                    <button class="btn btn-success" @onclick="ShowCreateAdminModal">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Crear Administrador
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        @if (stats != null)
+        {
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                            <h3 class="mb-0">@stats.TotalUsers</h3>
+                            <p class="text-muted mb-0">Total Usuarios</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card border-danger">
+                        <div class="card-body text-center">
+                            <i class="fas fa-user-shield fa-2x text-danger mb-2"></i>
+                            <h3 class="mb-0">@stats.AdminUsers</h3>
+                            <p class="text-muted mb-0">Administradores</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                            <h3 class="mb-0">@stats.ActiveUsers</h3>
+                            <p class="text-muted mb-0">Activos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <i class="fas fa-ban fa-2x text-warning mb-2"></i>
+                            <h3 class="mb-0">@stats.InactiveUsers</h3>
+                            <p class="text-muted mb-0">Inactivos</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Tabla de Usuarios -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    Lista de Usuarios
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                @if (isLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando usuarios...</p>
+                    </div>
+                }
+                else if (users == null || users.Count == 0)
+                {
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No hay usuarios registrados</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Email</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Empresa</th>
+                                    <th>Último Acceso</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in users)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle me-2">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold">@user.Name</div>
+                                                    <small class="text-muted">@user.Phone</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="text-break">@user.Email</span>
+                                        </td>
+                                        <td>
+                                            @if (user.Role == "Admin")
+                                            {
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-user-shield me-1"></i>Administrador
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-user me-1"></i>Usuario
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (user.IsActive)
+                                            {
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle me-1"></i>Activo
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-ban me-1"></i>Inactivo
+                                                </span>
+                                            }
+                                        </td>
+                                        <td>@(user.Company ?? "-")</td>
+                                        <td>
+                                            @if (user.LastLoginAt.HasValue)
+                                            {
+                                                <span>@user.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Nunca</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-primary"
+                                                        @onclick="() => ShowEditRoleModal(user)"
+                                                        title="Cambiar rol">
+                                                    <i class="fas fa-user-tag"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info"
+                                                        @onclick="() => ShowResetPasswordModal(user)"
+                                                        title="Resetear contraseña">
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                                <button class="btn btn-outline-warning"
+                                                        @onclick="() => ToggleUserStatus(user.Id!)"
+                                                        title="@(user.IsActive ? "Desactivar" : "Activar")">
+                                                    <i class="fas @(user.IsActive ? "fa-ban" : "fa-check-circle")"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger"
+                                                        @onclick="() => ShowDeleteModal(user)"
+                                                        title="Eliminar usuario">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales se agregarán aquí -->
+    <EditRoleModal
+        IsVisible="@showEditRoleModal"
+        User="@selectedUser"
+        OnConfirm="@UpdateUserRole"
+        OnCancel="@HideEditRoleModal" />
+
+    <CreateAdminModal
+        IsVisible="@showCreateAdminModal"
+        OnConfirm="@CreateAdminUser"
+        OnCancel="@HideCreateAdminModal" />
+
+    <DeleteUserModal
+        IsVisible="@showDeleteModal"
+        User="@selectedUser"
+        OnConfirm="@DeleteUser"
+        OnCancel="@HideDeleteModal" />
+
+    <!-- Modal Resetear Contraseña -->
+    @if (showResetPasswordModal && selectedUser != null)
+    {
+        <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-key me-2"></i>
+                            Resetear Contraseña
+                        </h5>
+                        <button type="button" class="btn-close" @onclick="HideResetPasswordModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted">
+                            Usuario: <strong>@selectedUser.Email</strong>
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Contraseña</label>
+                            <input type="password"
+                                   class="form-control"
+                                   @bind="newPassword"
+                                   placeholder="Ingrese la nueva contraseña"
+                                   @onkeypress="@(async (KeyboardEventArgs e) => { if (e.Key == "Enter") await ResetPassword(); })" />
+                        </div>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            El usuario deberá usar esta nueva contraseña en su próximo inicio de sesión.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="HideResetPasswordModal">
+                            Cancelar
+                        </button>
+                        <button type="button"
+                                class="btn btn-primary"
+                                @onclick="ResetPassword"
+                                disabled="@(string.IsNullOrWhiteSpace(newPassword))">
+                            <i class="fas fa-key me-1"></i>
+                            Resetear Contraseña
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<style>
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 18px;
+    }
+</style>
+
+@code {
+    private List<User>? users;
+    private UserStats? stats;
+    private bool isLoading = true;
+    private User? selectedUser;
+
+    private bool showEditRoleModal = false;
+    private bool showCreateAdminModal = false;
+    private bool showDeleteModal = false;
+    private bool showResetPasswordModal = false;
+    private string newPassword = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated || AuthService.CurrentUserRole != "Admin")
+        {
+            return;
+        }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            var usersTask = UserService.GetAllUsersAsync();
+            var statsTask = UserService.GetUserStatsAsync();
+
+            await Task.WhenAll(usersTask, statsTask);
+
+            users = await usersTask;
+            stats = await statsTask;
+
+            // Ocultar contraseñas
+            foreach (var user in users)
+            {
+                user.Password = "***HIDDEN***";
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error al cargar datos: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowEditRoleModal(User user)
+    {
+        selectedUser = user;
+        showEditRoleModal = true;
+    }
+
+    private void HideEditRoleModal()
+    {
+        showEditRoleModal = false;
+        selectedUser = null;
+    }
+
+    private void ShowCreateAdminModal()
+    {
+        showCreateAdminModal = true;
+    }
+
+    private void HideCreateAdminModal()
+    {
+        showCreateAdminModal = false;
+    }
+
+    private void ShowDeleteModal(User user)
+    {
+        selectedUser = user;
+        showDeleteModal = true;
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        selectedUser = null;
+    }
+
+    private void ShowResetPasswordModal(User user)
+    {
+        selectedUser = user;
+        newPassword = string.Empty;
+        showResetPasswordModal = true;
+    }
+
+    private void HideResetPasswordModal()
+    {
+        showResetPasswordModal = false;
+        selectedUser = null;
+        newPassword = string.Empty;
+    }
+
+    private async Task UpdateUserRole(string newRole)
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            var success = await UserService.UpdateUserRoleAsync(selectedUser.Id, newRole);
+            if (success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Rol actualizado correctamente");
+                await LoadData();
+                HideEditRoleModal();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error: No se pudo actualizar el rol");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+
+    private async Task CreateAdminUser(CreateAdminRequest request)
+    {
+        try
+        {
+            var newAdmin = await UserService.CreateAdminUserAsync(request);
+            if (newAdmin != null)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Administrador creado correctamente");
+                await LoadData();
+                HideCreateAdminModal();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error: No se pudo crear el administrador. El email podría estar duplicado.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+
+    private async Task ToggleUserStatus(string userId)
+    {
+        try
+        {
+            var success = await UserService.ToggleUserStatusAsync(userId);
+            if (success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Estado actualizado correctamente");
+                await LoadData();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error: No se pudo cambiar el estado");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        if (selectedUser == null) return;
+
+        try
+        {
+            var success = await UserService.DeleteUserAsync(selectedUser.Id);
+            if (success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Usuario eliminado correctamente");
+                await LoadData();
+                HideDeleteModal();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error: No se pudo eliminar el usuario");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+
+    private async Task ResetPassword()
+    {
+        if (selectedUser == null || string.IsNullOrWhiteSpace(newPassword)) return;
+
+        try
+        {
+            var success = await UserService.ResetPasswordAsync(selectedUser.Id, newPassword);
+            if (success)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Contraseña reseteada correctamente para {selectedUser.Email}");
+                HideResetPasswordModal();
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error: No se pudo resetear la contraseña");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error: {ex.Message}");
+        }
+    }
+}
+

@@ -1,0 +1,394 @@
+@page "/create"
+@using EDFCatalogoTablasNet.Services
+@using EDFCatalogoTablasNet.Models
+@inject ICatalogService CatalogService
+@inject IAuthService AuthService
+@inject IJSRuntime JSRuntime
+@inject ILogger<CreateCatalog> Logger
+
+<PageTitle>Crear Nuevo Catálogo - EDF Catálogo de Tablas</PageTitle>
+
+<div class="row">
+    <div class="col-12">
+        <!-- Header con breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/" class="text-decoration-none">
+                        <i class="fas fa-home me-1"></i>Inicio
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">
+                    <i class="fas fa-plus me-1"></i>Crear Catálogo
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Título principal -->
+        <div class="text-center mb-5">
+            <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+            <h1 class="display-5 fw-bold">Crear Nuevo Catálogo</h1>
+            <p class="lead text-muted">
+                Rellena este formulario para crear tu catálogo.
+                <br>
+                <small>¡Es súper fácil! Solo necesitas unos datos básicos.</small>
+            </p>
+        </div>
+    </div>
+</div>
+
+@if (showSuccess)
+{
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>
+                <strong>¡Genial! Tu catálogo se creó correctamente.</strong>
+                <br>
+                Puedes <a href="/catalogs" class="alert-link">ver todos los catálogos aquí</a>
+                o crear otro catálogo rellenando el formulario de nuevo.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>¡Ups! Algo salió mal.</strong>
+                <br>
+                @errorMessage
+                <button type="button" class="btn-close" data-bs-dismiss="alert" @onclick="() => errorMessage = string.Empty"></button>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-edit me-2"></i>Datos del Catálogo
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <EditForm Model="newCatalog" OnSubmit="CreateCatalogAsync">
+                    @* Temporalmente deshabilitado para diagnosticar *@
+                    @* <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" /> *@
+
+                    <!-- Nombre del catálogo -->
+                    <div class="mb-4">
+                        <label for="name" class="form-label fw-bold">
+                            <i class="fas fa-tag me-1 text-primary"></i>
+                            Nombre del Catálogo <span class="required">*</span>
+                        </label>
+                        <InputText @bind-Value="newCatalog.Name"
+                                   class="form-control form-control-lg"
+                                   id="name"
+                                   placeholder="Por ejemplo: Catálogo de Productos 2025" />
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Elige un nombre descriptivo que te ayude a identificar este catálogo fácilmente.
+                        </div>
+                        <ValidationMessage For="@(() => newCatalog.Name)" class="text-danger" />
+                    </div>
+
+                    <!-- Descripción -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label fw-bold">
+                            <i class="fas fa-align-left me-1 text-primary"></i>
+                            Descripción <span class="required">*</span>
+                        </label>
+                        <InputTextArea @bind-Value="newCatalog.Description"
+                                       class="form-control"
+                                       id="description"
+                                       rows="4"
+                                       placeholder="Describe qué contiene este catálogo, para qué sirve, o cualquier información importante..." />
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Explica brevemente qué información contiene este catálogo.
+                            Esto te ayudará a recordar su propósito más adelante.
+                        </div>
+                        <ValidationMessage For="@(() => newCatalog.Description)" class="text-danger" />
+                    </div>
+
+                    <!-- Categoría -->
+                    <div class="mb-4">
+                        <label for="category" class="form-label fw-bold">
+                            <i class="fas fa-folder me-1 text-primary"></i>
+                            Categoría <span class="text-muted">(opcional)</span>
+                        </label>
+                        <InputText @bind-Value="newCatalog.Category"
+                                   class="form-control"
+                                   id="category"
+                                   placeholder="Por ejemplo: Inventario, Ventas, Recursos Humanos..." />
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            La categoría te ayuda a organizar y filtrar tus catálogos.
+                            Puedes usar nombres como "Productos", "Clientes", "Inventario", etc.
+                        </div>
+                    </div>
+
+                    <!-- Cabeceras de Columnas -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-columns me-1 text-primary"></i>
+                            Cabeceras de Columnas <span class="required">*</span>
+                        </label>
+                        <div class="headers-container">
+                            @for (int i = 0; i < columnHeaders.Count; i++)
+                            {
+                                var index = i;
+                                <div class="input-group mb-2">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-columns"></i>
+                                    </span>
+                                    <input type="text"
+                                           class="form-control"
+                                           @bind="columnHeaders[index]"
+                                           placeholder="Nombre de la columna (ej: Nombre, Precio, Stock...)" />
+                                    @if (columnHeaders.Count > 1)
+                                    {
+                                        <button type="button"
+                                                class="btn btn-outline-danger"
+                                                @onclick="@(() => RemoveColumn(index))">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    }
+                                </div>
+                            }
+                            <button type="button"
+                                    class="btn btn-outline-primary btn-sm"
+                                    @onclick="AddColumn">
+                                <i class="fas fa-plus me-1"></i>Agregar Columna
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Define las columnas que tendrá tu catálogo. Estas serán las categorías de datos
+                            que podrás llenar para cada elemento (ej: Nombre, Precio, Descripción, etc.)
+                        </div>
+                    </div>
+
+                    <!-- Nuevos campos multimedia -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-photo-video me-2"></i>Información Adicional
+                                <small class="text-muted ms-2">(todos opcionales)</small>
+                            </h5>
+                        </div>
+                    </div>
+
+                    <!-- Fecha -->
+                    <div class="mb-4">
+                        <label for="fecha" class="form-label fw-bold">
+                            <i class="fas fa-calendar-alt me-1 text-primary"></i>
+                            Fecha <span class="text-muted">(opcional)</span>
+                        </label>
+                        <InputDate @bind-Value="newCatalog.Fecha"
+                                   class="form-control"
+                                   id="fecha" />
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Fecha relacionada con este catálogo. Por defecto toma la fecha de hoy,
+                            pero puedes cambiarla usando el calendario.
+                        </div>
+                    </div>
+
+                    <!-- Documento -->
+                    <UploadFileComponent Label="Documento (opcional)"
+                                       FileType="documento"
+                                       @bind-Value="newCatalog.DocumentoUrl" />
+
+                    <!-- Multimedia -->
+                    <UploadFileComponent Label="Multimedia (opcional)"
+                                       FileType="multimedia"
+                                       @bind-Value="newCatalog.MultimediaUrl" />
+
+                    <!-- Imagen -->
+                    <UploadFileComponent Label="Imagen (opcional)"
+                                       FileType="imagen"
+                                       @bind-Value="newCatalog.ImagenUrl" />
+
+                    <!-- Botones de acción -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="/" class="btn btn-outline-secondary btn-lg me-md-2">
+                            <i class="fas fa-arrow-left me-2"></i>Volver al Inicio
+                        </a>
+                        <button type="button" class="btn btn-success btn-lg" @onclick="CreateCatalogAsync" disabled="@isCreating">
+                            @if (isCreating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Guardando...</span>
+                            }
+                            else
+                            {
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span>💾 Guardar Catálogo</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ayuda contextual -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card bg-light border-0">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-question-circle text-info me-2"></i>¿Necesitas ayuda?
+                </h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="card-text">
+                            <strong>¿Qué es un catálogo?</strong><br>
+                            Un catálogo es como una lista organizada donde puedes guardar
+                            información sobre productos, servicios, o cualquier cosa que necesites catalogar.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="card-text">
+                            <strong>Ejemplos de nombres:</strong><br>
+                            • "Productos de la Tienda 2025"<br>
+                            • "Lista de Proveedores"<br>
+                            • "Inventario de Oficina"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateCatalogRequest newCatalog = new();
+    private bool isCreating = false;
+    private bool showSuccess = false;
+    private string errorMessage = string.Empty;
+    private List<string> columnHeaders = new() { "", "" }; // Iniciar con 2 columnas vacías
+
+    private void HandleInvalidSubmit()
+    {
+        Logger.LogWarning("[CreateCatalog] Formulario inválido - validación fallida");
+        errorMessage = "Por favor, revisa los campos marcados en rojo y corrige los errores antes de continuar.";
+        StateHasChanged();
+    }
+
+    private async Task CreateCatalogAsync()
+    {
+        try
+        {
+            // Log INMEDIATO antes de cualquier cosa
+            Console.WriteLine("=== BOTÓN CLICKEADO ===");
+            Logger.LogInformation("[CreateCatalog] INICIO - Botón clickeado");
+
+            isCreating = true;
+            errorMessage = string.Empty;
+
+            // Validación manual
+            if (string.IsNullOrWhiteSpace(newCatalog.Name) || newCatalog.Name.Length < 3)
+            {
+                errorMessage = "El nombre del catálogo debe tener al menos 3 caracteres.";
+                Logger.LogWarning("[CreateCatalog] Validación fallida - Nombre inválido");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(newCatalog.Description) || newCatalog.Description.Length < 10)
+            {
+                errorMessage = "La descripción debe tener al menos 10 caracteres.";
+                Logger.LogWarning("[CreateCatalog] Validación fallida - Descripción inválida");
+                return;
+            }
+
+            // Simular un pequeño delay para mostrar el spinner
+            await Task.Delay(500);
+
+            // DEBUG: Log detallado de autenticación
+            Logger.LogInformation("[CreateCatalog] IsAuthenticated: {IsAuth}", AuthService.IsAuthenticated);
+            Logger.LogInformation("[CreateCatalog] CurrentUserEmail: '{Email}'", AuthService.CurrentUserEmail ?? "NULL");
+            Logger.LogInformation("[CreateCatalog] CurrentUserRole: '{Role}'", AuthService.CurrentUserRole ?? "NULL");
+
+            var userEmail = AuthService.CurrentUserEmail;
+
+            // DEBUG: Log para diagnóstico
+            Logger.LogInformation("[CreateCatalog] UserEmail: '{Email}', Catalog Name: '{Name}'", userEmail ?? "NULL", newCatalog.Name);
+            Logger.LogInformation("[CreateCatalog] DocumentoUrl: '{Doc}', MultimediaUrl: '{Mult}', ImagenUrl: '{Img}'",
+                newCatalog.DocumentoUrl ?? "NULL", newCatalog.MultimediaUrl ?? "NULL", newCatalog.ImagenUrl ?? "NULL");
+
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                errorMessage = "Debes iniciar sesión para crear catálogos. Por favor, ve a la página de login e inicia sesión nuevamente.";
+                Logger.LogWarning("[CreateCatalog] ERROR: Usuario no autenticado - IsAuthenticated: {IsAuth}, UserEmail: '{Email}'",
+                    AuthService.IsAuthenticated, AuthService.CurrentUserEmail ?? "NULL");
+                return;
+            }
+
+            // Validar cabeceras de columnas
+            var validHeaders = columnHeaders.Where(h => !string.IsNullOrWhiteSpace(h)).ToList();
+            if (validHeaders.Count == 0)
+            {
+                errorMessage = "Debes definir al menos una columna para tu catálogo.";
+                Logger.LogWarning("[CreateCatalog] Validación fallida - Sin columnas definidas");
+                return;
+            }
+
+            // Asignar las cabeceras al catálogo
+            newCatalog.Headers = validHeaders.ToArray();
+            Logger.LogInformation("[CreateCatalog] Headers definidos: {Headers}", string.Join(", ", validHeaders));
+
+            var result = await CatalogService.CreateCatalogAsync(newCatalog, userEmail);
+
+            Logger.LogInformation("[CreateCatalog] Result: {Result}", result != null ? $"Success - ID: {result.Id}" : "NULL");
+
+            if (result != null)
+            {
+                showSuccess = true;
+                newCatalog = new CreateCatalogRequest(); // Limpiar formulario
+                columnHeaders = new List<string> { "", "" }; // Resetear columnas
+
+                // Scroll to top para mostrar el mensaje de éxito
+                await JSRuntime.InvokeVoidAsync("window.scrollTo", 0, 0);
+            }
+            else
+            {
+                errorMessage = "No se pudo crear el catálogo. Por favor, revisa los datos e inténtalo de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[CreateCatalog] Error inesperado al crear catálogo");
+            errorMessage = $"Ocurrió un error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void AddColumn()
+    {
+        columnHeaders.Add("");
+        StateHasChanged();
+    }
+
+    private void RemoveColumn(int index)
+    {
+        if (columnHeaders.Count > 1)
+        {
+            columnHeaders.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+}

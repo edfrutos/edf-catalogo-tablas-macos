@@ -1,0 +1,297 @@
+@page "/"
+@using EDFCatalogoTablasNet.Services
+@inject ICatalogService CatalogService
+
+<PageTitle>Inicio - EDF Catálogo de Tablas</PageTitle>
+
+<!-- Hero Section -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card bg-gradient hero-card">
+            <div class="hero-overlay"></div>
+            <div class="card-body text-center py-5 position-relative">
+                <i class="fas fa-table fa-4x mb-3 hero-icon"></i>
+                <h1 class="display-4 fw-bold mb-3 hero-title">¡Bienvenido al Catálogo de Tablas!</h1>
+                <p class="lead mb-4 hero-subtitle">
+                    Aquí puedes crear, ver y gestionar todos tus catálogos de forma fácil y rápida.
+                    <br>
+                    <strong>¡No necesitas conocimientos técnicos!</strong>
+                </p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="/create" class="btn btn-light btn-lg">
+                        <i class="fas fa-plus me-2"></i>Crear Mi Primer Catálogo
+                    </a>
+                    <a href="/catalogs" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-eye me-2"></i>Ver Catálogos Existentes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Guía Rápida -->
+<div class="row mb-5">
+    <div class="col-12">
+        <h2 class="text-center mb-4">
+            <i class="fas fa-map me-2 text-primary"></i>¿Cómo funciona? ¡Es muy fácil!
+        </h2>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-plus-circle fa-3x text-success"></i>
+                </div>
+                <h4 class="card-title">1. Crear Catálogo</h4>
+                <p class="card-text">
+                    Haz clic en <strong>"Crear Catálogo"</strong> y rellena un formulario sencillo 
+                    con el nombre y descripción de tu catálogo.
+                </p>
+                <a href="/create" class="btn btn-success">
+                    <i class="fas fa-arrow-right me-1"></i>Empezar Ahora
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-list-alt fa-3x text-info"></i>
+                </div>
+                <h4 class="card-title">2. Ver y Buscar</h4>
+                <p class="card-text">
+                    En <strong>"Ver Catálogos"</strong> puedes ver todos tus catálogos, 
+                    buscar por nombre y ver todos los detalles.
+                </p>
+                <a href="/catalogs" class="btn btn-info">
+                    <i class="fas fa-search me-1"></i>Explorar
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 text-center">
+            <div class="card-body">
+                <div class="mb-3">
+                    <i class="fas fa-edit fa-3x text-warning"></i>
+                </div>
+                <h4 class="card-title">3. Editar y Gestionar</h4>
+                <p class="card-text">
+                    Puedes modificar, actualizar o eliminar cualquier catálogo 
+                    cuando lo necesites. ¡Todo muy simple!
+                </p>
+                <a href="/catalogs" class="btn btn-warning">
+                    <i class="fas fa-tools me-1"></i>Gestionar Catálogos
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas Rápidas -->
+<div class="row mb-5">
+    <div class="col-12">
+        <h3 class="text-center mb-4">
+            <i class="fas fa-chart-bar me-2 text-primary"></i>Resumen Rápido
+        </h3>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-6 mb-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <i class="fas fa-database fa-2x text-primary mb-2"></i>
+                <h4 class="mb-1">@totalCatalogs</h4>
+                <p class="text-muted mb-0">
+                    @(totalCatalogs == 1 ? "Catálogo creado" : "Catálogos creados")
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-2x text-success mb-2"></i>
+                <h4 class="mb-1">24/7</h4>
+                <p class="text-muted mb-0">Disponible siempre</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tips para principiantes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>💡 Consejos para empezar
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                <strong>Empieza simple:</strong> Crea tu primer catálogo con pocos datos
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                <strong>Usa nombres claros:</strong> Elige nombres que entiendas fácilmente
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                <strong>Explora sin miedo:</strong> No puedes romper nada, todo es seguro
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-check-circle text-success me-2"></i>
+                                <strong>Pide ayuda:</strong> Usa el menú "Ayuda" si tienes dudas
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int totalCatalogs;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var catalogs = await CatalogService.GetAllCatalogsAsync();
+            totalCatalogs = catalogs.Count();
+        }
+        catch
+        {
+            totalCatalogs = 0;
+        }
+    }
+}
+
+<style>
+    .hero-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        position: relative;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    
+    .hero-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.2);
+        z-index: 1;
+    }
+    
+    .hero-card .card-body {
+        z-index: 2;
+    }
+    
+    .hero-icon {
+        color: #ffd700;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.3));
+    }
+    
+    .hero-title {
+        text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        color: #fff;
+        filter: drop-shadow(0 0 15px rgba(255,255,255,0.2));
+        background: linear-gradient(45deg, #fff 0%, #f0f8ff 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1.5rem !important;
+        line-height: 1.2;
+    }
+    
+    .hero-subtitle {
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+        color: #f8f9fa;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem 2rem;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 0 auto;
+        max-width: 90%;
+    }
+    
+    .hero-subtitle strong {
+        color: #ffd700;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+    
+    .hero-card .btn-light {
+        background: rgba(255, 255, 255, 0.95);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: #333;
+        font-weight: 600;
+        text-shadow: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .hero-card .btn-light:hover {
+        background: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    
+    .hero-card .btn-outline-light {
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        color: #fff;
+        font-weight: 600;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .hero-card .btn-outline-light:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: #fff;
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255,255,255,0.2);
+    }
+    
+    /* Media query para dispositivos móviles */
+    @@media (max-width: 768px) {
+        .hero-title {
+            font-size: 2rem !important;
+        }
+        
+        .hero-subtitle {
+            font-size: 1rem;
+            padding: 0.75rem 1rem;
+        }
+        
+        .hero-card .btn-lg {
+            font-size: 1rem;
+            padding: 0.75rem 1.5rem;
+        }
+    }
+</style>

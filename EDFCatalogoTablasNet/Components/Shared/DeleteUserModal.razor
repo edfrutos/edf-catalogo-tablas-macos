@@ -1,0 +1,81 @@
+@using EDFCatalogoTablasNet.Models
+
+<div class="modal @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Eliminar Usuario
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="Cancel"></button>
+            </div>
+            <div class="modal-body">
+                @if (User != null)
+                {
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>¡Atención!</strong> Esta acción no se puede deshacer.
+                    </div>
+
+                    <p class="mb-3">¿Estás seguro de que deseas eliminar al siguiente usuario?</p>
+
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Nombre:</strong> @User.Name</p>
+                            <p class="mb-1"><strong>Email:</strong> @User.Email</p>
+                            <p class="mb-1"><strong>Rol:</strong>
+                                @if (User.Role == "Admin")
+                                {
+                                    <span class="badge bg-danger">Administrador</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-primary">Usuario</span>
+                                }
+                            </p>
+                            @if (!string.IsNullOrEmpty(User.Company))
+                            {
+                                <p class="mb-0"><strong>Empresa:</strong> @User.Company</p>
+                            }
+                        </div>
+                    </div>
+
+                    @if (User.Role == "Admin")
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            <strong>Usuario Administrador:</strong> Asegúrate de que haya otros administradores en el sistema antes de eliminar este usuario.
+                        </div>
+                    }
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" @onclick="Confirm">
+                    <i class="fas fa-trash me-1"></i>Eliminar Usuario
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public User? User { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task Confirm()
+    {
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
+

@@ -1,0 +1,92 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
+@inject IAuthService AuthService
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        @if (RequiresAuth(routeData.PageType) && !AuthService.IsAuthenticated)
+        {
+            <LayoutView Layout="@typeof(EmptyLayout)">
+                <div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-light">
+                    <div class="row justify-content-center w-100">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card shadow-lg border-warning">
+                                <div class="card-header bg-warning text-dark text-center py-4">
+                                    <i class="fas fa-shield-alt fa-3x mb-3"></i>
+                                    <h3 class="mb-0">Acceso Restringido</h3>
+                                    <p class="mb-0">Necesitas iniciar sesión para continuar</p>
+                                </div>
+                                <div class="card-body p-4 text-center">
+                                    <p class="mb-4">
+                                        Esta página contiene información sensible que requiere autenticación.
+                                        Por favor, inicia sesión o regístrate para acceder.
+                                    </p>
+                                    <div class="d-grid gap-2">
+                                        <a href="/login" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                                        </a>
+                                        <a href="/register" class="btn btn-outline-success">
+                                            <i class="fas fa-user-plus me-2"></i>Crear Cuenta
+                                        </a>
+                                        <a href="/contact" class="btn btn-outline-secondary">
+                                            <i class="fas fa-envelope me-2"></i>¿Necesitas ayuda?
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </LayoutView>
+        }
+        else
+        {
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        }
+    </Found>
+    <NotFound>
+        <PageTitle>Página no encontrada</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div class="container text-center mt-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <i class="fas fa-search fa-5x text-muted mb-4"></i>
+                        <h1 class="display-4 text-muted">404</h1>
+                        <h3>¡Ups! No encontramos esta página</h3>
+                        <p class="text-muted mb-4">
+                            La página que buscas no existe o ha sido movida.
+                        </p>
+                        <a href="/" class="btn btn-primary btn-lg">
+                            <i class="fas fa-home me-2"></i>Ir al Inicio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    private bool RequiresAuth(Type pageType)
+    {
+        // Páginas que NO requieren autenticación (públicas)
+        var publicPages = new[]
+        {
+            "Register",
+            "Contact"
+        };
+
+        var pageName = pageType.Name;
+
+        // Si es una página pública, no requiere autenticación
+        if (publicPages.Contains(pageName))
+        {
+            return false;
+        }
+
+        // Las páginas de MVC/Razor Pages no se manejan aquí
+        // Solo las páginas Blazor componentes requieren autenticación
+        return true;
+    }
+}

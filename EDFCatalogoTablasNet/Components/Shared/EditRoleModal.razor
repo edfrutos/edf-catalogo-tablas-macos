@@ -1,0 +1,84 @@
+@using EDFCatalogoTablasNet.Models
+
+<div class="modal @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-tag me-2"></i>
+                    Cambiar Rol de Usuario
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="Cancel"></button>
+            </div>
+            <div class="modal-body">
+                @if (User != null)
+                {
+                    <div class="mb-3">
+                        <p class="mb-2"><strong>Usuario:</strong> @User.Name</p>
+                        <p class="mb-2"><strong>Email:</strong> @User.Email</p>
+                        <p class="mb-3"><strong>Rol actual:</strong>
+                            @if (User.Role == "Admin")
+                            {
+                                <span class="badge bg-danger">Administrador</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-primary">Usuario</span>
+                            }
+                        </p>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nuevo Rol:</label>
+                        <select class="form-select" @bind="selectedRole">
+                            <option value="User">Usuario</option>
+                            <option value="Admin">Administrador</option>
+                        </select>
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Los administradores tienen acceso completo al sistema.
+                        </small>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" @onclick="Confirm">
+                    <i class="fas fa-check me-1"></i>Actualizar Rol
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public User? User { get; set; }
+    [Parameter] public EventCallback<string> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string selectedRole = "User";
+
+    protected override void OnParametersSet()
+    {
+        if (User != null)
+        {
+            selectedRole = User.Role;
+        }
+    }
+
+    private async Task Confirm()
+    {
+        await OnConfirm.InvokeAsync(selectedRole);
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
+

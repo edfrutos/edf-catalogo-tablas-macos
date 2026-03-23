@@ -1,0 +1,20 @@
+{
+  "FormattingOptions": {
+    "EnableEditorConfigSupport": true,
+    "OrganizeImports": true
+  },
+  "RoslynExtensionsOptions": {
+    "EnableAnalyzersSupport": true,
+    "EnableImportCompletion": true,
+    "EnableAsyncCompletion": true
+  },
+  "Razor": {
+    "DisableErrorSquiggles": true,
+    "EnableFormatting": true,
+    "EnableCodeActions": true
+  },
+  "RoslynAnalyzers": {
+    "EnableDecompilationSupport": false,
+    "EnableImportCompletion": true
+  }
+}

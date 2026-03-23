@@ -1,0 +1,157 @@
+@using EDFCatalogoTablasNet.Services
+@using System.ComponentModel.DataAnnotations
+
+<div class="modal @(IsVisible ? "show d-block" : "")" tabindex="-1" style="@(IsVisible ? "background-color: rgba(0,0,0,0.5);" : "")">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Crear Nuevo Administrador
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="Cancel"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    El nuevo usuario tendrá permisos de <strong>Administrador</strong> y podrá gestionar todo el sistema.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-user me-1"></i>Nombre Completo *
+                        </label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="adminRequest.Name"
+                               placeholder="Ej: Juan Pérez" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-envelope me-1"></i>Email *
+                        </label>
+                        <input type="email"
+                               class="form-control"
+                               @bind="adminRequest.Email"
+                               placeholder="juan@empresa.com" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-phone me-1"></i>Teléfono
+                        </label>
+                        <input type="tel"
+                               class="form-control"
+                               @bind="adminRequest.Phone"
+                               placeholder="+34 600 123 456" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-lock me-1"></i>Contraseña *
+                        </label>
+                        <div class="input-group">
+                            <input type="@(showPassword ? "text" : "password")"
+                                   class="form-control"
+                                   @bind="adminRequest.Password"
+                                   placeholder="Mínimo 6 caracteres" />
+                            <button class="btn btn-outline-secondary"
+                                    type="button"
+                                    @onclick="TogglePasswordVisibility">
+                                <i class="fas @(showPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Mínimo 6 caracteres</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-building me-1"></i>Empresa
+                        </label>
+                        <input type="text"
+                               class="form-control"
+                               @bind="adminRequest.Company"
+                               placeholder="Nombre de la empresa" />
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        @errorMessage
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-success" @onclick="Confirm" disabled="@(!IsFormValid())">
+                    <i class="fas fa-check me-1"></i>Crear Administrador
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<CreateAdminRequest> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private CreateAdminRequest adminRequest = new();
+    private string errorMessage = string.Empty;
+    private bool showPassword = false;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            // Reset form cuando se muestra el modal
+            adminRequest = new CreateAdminRequest();
+            errorMessage = string.Empty;
+            showPassword = false;
+        }
+    }
+
+    private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(adminRequest.Name) &&
+               !string.IsNullOrWhiteSpace(adminRequest.Email) &&
+               !string.IsNullOrWhiteSpace(adminRequest.Password) &&
+               adminRequest.Password.Length >= 6;
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
+    private async Task Confirm()
+    {
+        errorMessage = string.Empty;
+
+        if (!IsFormValid())
+        {
+            errorMessage = "Por favor, completa todos los campos obligatorios.";
+            return;
+        }
+
+        if (!adminRequest.Email.Contains("@"))
+        {
+            errorMessage = "El email no es válido.";
+            return;
+        }
+
+        await OnConfirm.InvokeAsync(adminRequest);
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
+

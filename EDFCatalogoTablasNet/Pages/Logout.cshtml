@@ -1,0 +1,36 @@
+@page "/logout"
+@model EDFCatalogoTablasNet.Pages.LogoutModel
+@{
+    ViewData["Title"] = "Cerrando Sesión";
+    Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-center align-items-center min-vh-100 bg-light">
+    <div class="col-md-4 col-sm-6">
+        <div class="card shadow">
+            <div class="card-body p-4 text-center">
+                <div class="mb-4">
+                    <h3 class="text-primary">Cerrando Sesión</h3>
+                    <p class="text-muted">Tu sesión ha sido cerrada correctamente</p>
+                </div>
+
+                <div class="mb-4">
+                    <i class="fas fa-sign-out-alt fa-3x text-success"></i>
+                </div>
+
+                <div class="text-center">
+                    <p class="mb-3">¡Gracias por usar EDF Catálogo de Tablas!</p>
+                    <a href="/login" class="btn btn-primary">Iniciar Sesión Nuevamente</a>
+                </div>
+
+                <hr>
+
+                <div class="text-center">
+                    <small class="text-muted">
+                        <a href="/" class="text-decoration-none">Volver al Inicio</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

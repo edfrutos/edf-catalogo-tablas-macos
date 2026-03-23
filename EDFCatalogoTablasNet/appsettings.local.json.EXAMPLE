@@ -1,0 +1,10 @@
+{
+  "MongoDB": {
+    "ConnectionString": "mongodb+srv://TU_USUARIO:TU_PASSWORD@cluster0.XXXXX.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
+    "DatabaseName": "edf_catalogotablas",
+    "UsersCollection": "users",
+    "CatalogsCollection": "catalogs",
+    "ContactsCollection": "contacts"
+  }
+}
+

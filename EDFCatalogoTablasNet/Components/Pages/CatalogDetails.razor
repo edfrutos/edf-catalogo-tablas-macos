@@ -1,0 +1,803 @@
+@page "/catalog/{id}"
+@using EDFCatalogoTablasNet.Services
+@using EDFCatalogoTablasNet.Models
+@using EDFCatalogoTablasNet.Components.Shared
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components
+@inject ICatalogService CatalogService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ILogger<CatalogDetails> Logger
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(catalog?.Name ?? "Catálogo") - EDF Catálogo de Tablas</PageTitle>
+
+<div class="row">
+    <div class="col-12">
+        <!-- Header con breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/" class="text-decoration-none">
+                        <i class="fas fa-home me-1"></i>Inicio
+                    </a>
+                </li>
+                <li class="breadcrumb-item">
+                    <a href="/catalogs" class="text-decoration-none">
+                        <i class="fas fa-list me-1"></i>Mis Catálogos
+                    </a>
+                </li>
+                <li class="breadcrumb-item active">
+                    <i class="fas fa-eye me-1"></i>Ver Detalles
+                </li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <!-- Loading state -->
+    <div class="row">
+        <div class="col-12 text-center py-5">
+            <div class="loading-spinner mx-auto mb-3" style="width: 3rem; height: 3rem;"></div>
+            <p class="text-muted">Cargando información del catálogo...</p>
+        </div>
+    </div>
+}
+else if (catalog == null)
+{
+    <!-- Catálogo no encontrado -->
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-5x text-warning mb-4"></i>
+                <h2>¡Ups! No encontramos este catálogo</h2>
+                <p class="text-muted mb-4">
+                    El catálogo que buscas no existe o ha sido eliminado.
+                    <br>
+                    Puedes ver todos los catálogos disponibles o crear uno nuevo.
+                </p>
+                <div class="d-flex justify-content-center gap-3">
+                    <a href="/catalogs" class="btn btn-primary">
+                        <i class="fas fa-list me-2"></i>Ver Todos los Catálogos
+                    </a>
+                    <a href="/create" class="btn btn-outline-primary">
+                        <i class="fas fa-plus me-2"></i>Crear Nuevo Catálogo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Header del catálogo -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient" style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%); color: white; border: none;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        @if (!string.IsNullOrEmpty(catalog.ImagenUrl))
+                        {
+                            <div class="me-4">
+                                <img src="@catalog.ImagenUrl"
+                                     alt="Logo del catálogo"
+                                     class="rounded shadow"
+                                     style="max-width: 150px; max-height: 150px; object-fit: cover; border: 3px solid rgba(255,255,255,0.3);"
+                                     onerror="this.style.display='none'" />
+                            </div>
+                        }
+                        <div class="flex-grow-1">
+                            <h1 class="display-5 fw-bold mb-3 text-white" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+                                <i class="fas fa-table me-2"></i>@catalog.Name
+                            </h1>
+                            <p class="lead mb-3 text-white-75" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">@catalog.Description</p>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <small class="d-block text-white-50" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">ID del Catálogo:</small>
+                                    <strong class="text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">#@catalog.Id</strong>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <small class="d-block text-white-50" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Fecha de Creación:</small>
+                                    <strong class="text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">@catalog.CreatedAt.ToString("dd/MM/yyyy HH:mm")</strong>
+                                </div>
+                                @if (!string.IsNullOrEmpty(catalog.Category))
+                                {
+                                    <div class="col-md-4 mb-2">
+                                        <small class="d-block text-white-50" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Categoría:</small>
+                                        <span class="badge bg-light text-dark">
+                                            <i class="fas fa-folder me-1"></i>@catalog.Category
+                                        </span>
+                                    </div>
+                                }
+                                @if (catalog.Fecha.HasValue)
+                                {
+                                    <div class="col-md-4 mb-2">
+                                        <small class="d-block text-white-50" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">Fecha del Catálogo:</small>
+                                        <strong class="text-white" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">
+                                            <i class="fas fa-calendar me-1"></i>
+                                            @catalog.Fecha.Value.ToString("dd/MM/yyyy")
+                                        </strong>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="ms-3">
+                            <div class="dropdown">
+                                <button class="btn btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-cog me-1"></i>Acciones
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a href="/catalog/edit/@catalog.Id" class="dropdown-item">
+                                            <i class="fas fa-edit me-2"></i>Editar
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <button class="dropdown-item" @onclick="DuplicateCatalog">
+                                            <i class="fas fa-copy me-2"></i>Duplicar
+                                        </button>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button class="dropdown-item text-danger" @onclick="ShowDeleteModal">
+                                            <i class="fas fa-trash me-2"></i>Eliminar
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información detallada -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <!-- Descripción completa -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-align-left me-2 text-primary"></i>Descripción Completa
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(catalog.Description))
+                    {
+                        <p class="card-text">@catalog.Description</p>
+                    }
+                    else
+                    {
+                        <p class="text-muted fst-italic">Este catálogo no tiene descripción.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Recursos multimedia -->
+            <!-- Contenido del catálogo -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-database me-2 text-primary"></i>Contenido del Catálogo
+                    </h4>
+                    <button class="btn btn-sm btn-primary" @onclick="ShowAddRowModal">
+                        <i class="bi bi-plus-circle me-1"></i>Agregar Fila
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (catalog.Headers.Length == 0 || (catalog.Rows?.Count ?? 0) == 0)
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            @if (catalog.Headers.Length == 0)
+                            {
+                                <h5>No hay columnas definidas</h5>
+                                <p class="text-muted mb-3">
+                                    Este catálogo aún no tiene columnas definidas.
+                                    <br>
+                                    Edita el catálogo para agregar las cabeceras de las columnas.
+                                </p>
+                                <a href="/catalog/edit/@catalog.Id" class="btn btn-outline-primary">
+                                    <i class="bi bi-pencil me-2"></i>Editar Catálogo
+                                </a>
+                            }
+                            else
+                            {
+                                <h5>No hay datos en este catálogo</h5>
+                                <p class="text-muted mb-3">
+                                    Comienza agregando la primera fila de datos.
+                                </p>
+                                <button class="btn btn-primary" @onclick="ShowAddRowModal">
+                                    <i class="bi bi-plus-circle me-2"></i>Agregar Primera Fila
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Nueva estructura de filas con archivos -->
+                        <div class="catalog-rows-container">
+                            @if (catalog.Rows != null && catalog.Rows.Any())
+                            {
+                                @for (int i = 0; i < catalog.Rows.Count; i++)
+                                {
+                                    var rowIndex = i;
+                                    var row = catalog.Rows[i];
+                                    <CatalogRowComponent Row="@row"
+                                                        Headers="@catalog.Headers"
+                                                        RowIndex="@rowIndex"
+                                                        OnEditRow="@HandleEditRow"
+                                                        OnDeleteRow="@HandleDeleteRow" />
+                                }
+                            }
+                            else
+                            {
+                                <!-- Mostrar filas legacy si existen -->
+                                @if (catalog.LegacyRows != null && catalog.LegacyRows.Any())
+                                {
+                                    @for (int i = 0; i < catalog.LegacyRows.Count; i++)
+                                    {
+                                        var rowIndex = i;
+                                        var legacyRow = catalog.LegacyRows[i];
+                                        var convertedRow = new CatalogRow
+                                        {
+                                            Data = legacyRow,
+                                            CreatedAt = catalog.CreatedAt,
+                                            UpdatedAt = catalog.UpdatedAt
+                                        };
+                                        <CatalogRowComponent Row="@convertedRow"
+                                                            Headers="@catalog.Headers"
+                                                            RowIndex="@rowIndex"
+                                                            OnEditRow="@HandleEditRow"
+                                                            OnDeleteRow="@HandleDeleteRow" />
+                                    }
+                                }
+                            }
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <small class="text-muted">
+                                <i class="fas fa-list me-1"></i>
+                                Total de filas: <strong>@((catalog.Rows?.Count ?? 0) + (catalog.LegacyRows?.Count ?? 0))</strong>
+                                @if (catalog.Rows?.Any() == true && catalog.LegacyRows?.Any() == true)
+                                {
+                                    <span class="badge bg-warning ms-2">Contiene filas legacy</span>
+                                }
+                            </small>
+                            <button class="btn btn-sm btn-primary" @onclick="ShowAddRowModal">
+                                <i class="fas fa-plus-circle me-1"></i>Agregar Más Filas
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel lateral con información adicional -->
+        <div class="col-lg-4">
+            <!-- Estadísticas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2 text-primary"></i>Estadísticas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="border-end">
+                                <h3 class="text-primary mb-1">@GetTotalElements()</h3>
+                                <small class="text-muted">Elementos</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h3 class="text-success mb-1">@GetTotalFields()</h3>
+                            <small class="text-muted">Campos</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        Última actualización: @GetLastUpdatedDate().ToString("dd/MM/yyyy")
+                    </small>
+                </div>
+            </div>
+
+            <!-- Acciones rápidas -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-zap me-2 text-primary"></i>Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" @onclick="ShowAddRowModal">
+                            <i class="fas fa-plus me-2"></i>Agregar Elemento
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="ExportCatalogData">
+                            <i class="fas fa-download me-2"></i>Exportar Datos
+                        </button>
+                        <button class="btn btn-outline-info" @onclick="ShareCatalog">
+                            <i class="fas fa-share me-2"></i>Compartir Catálogo
+                        </button>
+                    </div>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        @GetQuickActionsStatus()
+                    </small>
+                </div>
+            </div>
+
+            <!-- Navegación -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-compass me-2 text-primary"></i>¿Qué quieres hacer?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/catalogs" class="btn btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>Ver Todos los Catálogos
+                        </a>
+                        <a href="/create" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Crear Nuevo Catálogo
+                        </a>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fas fa-home me-2"></i>Ir al Inicio
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de confirmación de eliminación -->
+<DeleteCatalogModal
+    IsVisible="@showDeleteModal"
+    Catalog="@catalog"
+    IsDeleting="@isDeleting"
+    ErrorMessage="@deleteErrorMessage"
+    OnConfirm="@HandleDelete"
+    OnCancel="@HideDeleteModal" />
+
+<!-- Modal para agregar fila -->
+<AddRowModal
+    Headers="@(catalog?.Headers ?? Array.Empty<string>())"
+    OnRowSaved="@HandleRowSaved" />
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private Catalog? catalog;
+    private bool isLoading = true;
+
+    // Variables para el modal de eliminación
+    private bool showDeleteModal = false;
+    private bool isDeleting = false;
+    private string? deleteErrorMessage = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+
+            catalog = await CatalogService.GetCatalogByIdAsync(Id, userEmail, userRole);
+        }
+        catch (Exception)
+        {
+            // En caso de error, catalog será null
+            catalog = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ShowDeleteModal()
+    {
+        showDeleteModal = true;
+        deleteErrorMessage = null;
+    }
+
+    private void HideDeleteModal()
+    {
+        showDeleteModal = false;
+        deleteErrorMessage = null;
+    }
+
+    private async Task HandleDelete()
+    {
+        if (catalog == null) return;
+
+        try
+        {
+            isDeleting = true;
+            deleteErrorMessage = null;
+
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+
+            var success = await CatalogService.DeleteCatalogAsync(catalog.Id, userEmail, userRole);
+
+            if (success)
+            {
+                // Redirigir a la lista de catálogos después de eliminar
+                Navigation.NavigateTo("/catalogs");
+            }
+            else
+            {
+                deleteErrorMessage = "No se pudo eliminar el catálogo. Por favor, inténtalo de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            deleteErrorMessage = $"Error al eliminar el catálogo: {ex.Message}";
+        }
+        finally
+        {
+            isDeleting = false;
+        }
+    }
+
+    private async Task ShowAddRowModal()
+    {
+        await JSRuntime.InvokeVoidAsync("showModal", "addRowModal");
+    }
+
+    private async Task HideAddRowModal()
+    {
+        await JSRuntime.InvokeVoidAsync("hideModal", "addRowModal");
+    }
+
+    private async Task DeleteRow(int rowIndex)
+    {
+        if (catalog == null) return;
+
+        try
+        {
+            var updatedCatalog = await CatalogService.DeleteRowAsync(catalog.Id, rowIndex);
+
+            if (updatedCatalog != null)
+            {
+                catalog = updatedCatalog;
+            }
+        }
+        catch (Exception)
+        {
+            // Manejar error silenciosamente o mostrar notificación
+        }
+    }
+
+    private async Task HandleRowSaved(CatalogRow newRow)
+    {
+        if (catalog == null) return;
+
+        try
+        {
+            // Inicializar Rows si es null
+            if (catalog.Rows == null)
+            {
+                catalog.Rows = new List<CatalogRow>();
+            }
+
+            // Usar el servicio para agregar la fila (esto maneja la actualización en MongoDB)
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+
+            var updatedCatalog = await CatalogService.AddRowAsync(catalog.Id, newRow, userEmail, userRole);
+
+            if (updatedCatalog != null)
+            {
+                catalog = updatedCatalog;
+                Logger.LogInformation("[CatalogDetails] Nueva fila agregada al catálogo {CatalogId}", catalog.Id);
+
+                // Cerrar el modal
+                await JSRuntime.InvokeVoidAsync("hideModal", "addRowModal");
+                StateHasChanged();
+            }
+            else
+            {
+                Logger.LogWarning("[CatalogDetails] No se pudo agregar la fila al catálogo {CatalogId}", catalog.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[CatalogDetails] Error al guardar nueva fila en catálogo {CatalogId}", catalog?.Id);
+        }
+    }
+
+    // Variables para modal de edición
+    private int currentEditingRowIndex = -1;
+
+    private async Task HandleEditRow(int rowIndex)
+    {
+        if (catalog?.Rows != null && rowIndex >= 0 && rowIndex < catalog.Rows.Count)
+        {
+            currentEditingRowIndex = rowIndex;
+            var rowToEdit = catalog.Rows[rowIndex];
+
+            // Usar el modal global de edición
+            await JSRuntime.InvokeVoidAsync("showEditModal",
+                rowToEdit,
+                catalog.Headers,
+                rowIndex,
+                DotNetObjectReference.Create(this as object));
+        }
+    }
+
+    private async Task HandleDeleteRow(int rowIndex)
+    {
+        if (catalog == null) return;
+
+        // Confirmar eliminación
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
+            $"¿Estás seguro de que quieres eliminar la fila {rowIndex + 1}?");
+
+        if (confirmed)
+        {
+            try
+            {
+                var userEmail = AuthService.CurrentUserEmail;
+                var userRole = AuthService.CurrentUserRole;
+
+                var updatedCatalog = await CatalogService.DeleteRowAsync(catalog.Id, rowIndex, userEmail, userRole);
+
+                if (updatedCatalog != null)
+                {
+                    catalog = updatedCatalog;
+                    Logger.LogInformation("[CatalogDetails] Fila {RowIndex} eliminada del catálogo {CatalogId}", rowIndex, catalog.Id);
+                    StateHasChanged();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "No se pudo eliminar la fila");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "[CatalogDetails] Error al eliminar fila {RowIndex} del catálogo {CatalogId}", rowIndex, catalog?.Id);
+                await JSRuntime.InvokeVoidAsync("alert", "Error al eliminar la fila");
+            }
+        }
+    }
+
+    private async Task HandleRowUpdated(CatalogRow updatedRow)
+    {
+        if (catalog == null || currentEditingRowIndex < 0) return;
+
+        try
+        {
+            var currentUser = await AuthService.GetCurrentUserAsync();
+            var userEmail = currentUser?.Email;
+            var userRole = currentUser?.Role;
+
+            var result = await CatalogService.UpdateRowAsync(catalog.Id, currentEditingRowIndex, updatedRow, userEmail, userRole);
+
+            if (result != null)
+            {
+                catalog = result;
+                currentEditingRowIndex = -1;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[CatalogDetails] Error al actualizar fila {RowIndex} en catálogo {CatalogId}", currentEditingRowIndex, catalog?.Id);
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleRowUpdatedFromJS(CatalogRow updatedRow)
+    {
+        // Convertir JsonElement a valores de tipo string para evitar problemas de serialización
+        if (updatedRow?.Data != null)
+        {
+            var convertedData = new Dictionary<string, object>();
+            foreach (var kvp in updatedRow.Data)
+            {
+                if (kvp.Value is System.Text.Json.JsonElement jsonElement)
+                {
+                    convertedData[kvp.Key] = jsonElement.ValueKind switch
+                    {
+                        System.Text.Json.JsonValueKind.String => jsonElement.GetString() ?? "",
+                        System.Text.Json.JsonValueKind.Number => jsonElement.GetDouble().ToString(),
+                        System.Text.Json.JsonValueKind.True => "true",
+                        System.Text.Json.JsonValueKind.False => "false",
+                        System.Text.Json.JsonValueKind.Null => "",
+                        _ => jsonElement.ToString()
+                    };
+                }
+                else
+                {
+                    convertedData[kvp.Key] = kvp.Value?.ToString() ?? "";
+                }
+            }
+            updatedRow.Data = convertedData;
+        }
+
+        await HandleRowUpdated(updatedRow);
+    }
+
+    // Métodos para estadísticas
+    private int GetTotalElements()
+    {
+        if (catalog == null) return 0;
+        return (catalog.Rows?.Count ?? 0) + (catalog.LegacyRows?.Count ?? 0);
+    }
+
+    private int GetTotalFields()
+    {
+        if (catalog?.Headers == null) return 0;
+        return catalog.Headers.Length;
+    }
+
+    private DateTime GetLastUpdatedDate()
+    {
+        if (catalog == null) return DateTime.Now;
+
+        var lastUpdated = catalog.UpdatedAt;
+
+        // Buscar la fecha más reciente entre las filas
+        var rowsLastUpdated = catalog.Rows?.Any() == true
+            ? catalog.Rows.Max(r => r.UpdatedAt)
+            : DateTime.MinValue;
+
+        var legacyRowsLastUpdated = DateTime.MinValue;
+        // Los LegacyRows son Dictionary<string, object>, no tienen UpdatedAt
+        // Por ahora usamos la fecha de creación del catálogo para legacy rows
+
+        var maxRowsDate = new[] { rowsLastUpdated, legacyRowsLastUpdated }.Max();
+
+        return new[] { lastUpdated, maxRowsDate }.Max();
+    }
+
+    // Métodos para acciones rápidas
+    private string GetQuickActionsStatus()
+    {
+        if (catalog == null) return "Cargando...";
+
+        var totalElements = GetTotalElements();
+        if (totalElements == 0) return "Agrega tu primer elemento para comenzar.";
+
+        return $"Catálogo activo con {totalElements} elementos.";
+    }
+
+    private async Task ExportCatalogData()
+    {
+        if (catalog == null) return;
+
+        try
+        {
+            // Crear datos para exportación
+            var exportData = new
+            {
+                catalogName = catalog.Name,
+                description = catalog.Description,
+                createdAt = catalog.CreatedAt,
+                lastUpdated = GetLastUpdatedDate(),
+                totalElements = GetTotalElements(),
+                totalFields = GetTotalFields(),
+                headers = catalog.Headers,
+                rows = (catalog.Rows ?? new List<CatalogRow>()).Select(row => new
+                {
+                    data = row.Data,
+                    files = new
+                    {
+                        documents = row.Files.Documents,
+                        multimedia = row.Files.MultimediaFiles,
+                        images = row.Files.Images,
+                        additionalFiles = row.Files.AdditionalFiles
+                    },
+                    createdAt = row.CreatedAt,
+                    updatedAt = row.UpdatedAt
+                }).ToArray()
+            };
+
+            // Convertir a JSON
+            var json = System.Text.Json.JsonSerializer.Serialize(exportData, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+
+            // Crear nombre de archivo
+            var fileName = $"catalogo_{catalog.Name?.Replace(" ", "_")}_{DateTime.Now:yyyyMMdd}.json";
+
+            // Descargar archivo
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/json", json);
+
+            Logger.LogInformation("Catálogo {CatalogId} exportado exitosamente", catalog.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al exportar catálogo {CatalogId}", catalog.Id);
+            await JSRuntime.InvokeVoidAsync("alert", "Error al exportar los datos. Inténtalo de nuevo.");
+        }
+    }
+
+    private async Task ShareCatalog()
+    {
+        if (catalog == null) return;
+
+        try
+        {
+            // Crear URL para compartir (en una implementación real, esto podría ser un enlace público)
+            var shareUrl = $"{Navigation.BaseUri}catalog/{catalog.Id}";
+
+            // Copiar URL al portapapeles
+            await JSRuntime.InvokeVoidAsync("copyToClipboard", shareUrl);
+
+            // Mostrar mensaje de confirmación
+            await JSRuntime.InvokeVoidAsync("alert", "Enlace del catálogo copiado al portapapeles.");
+
+            Logger.LogInformation("Enlace de catálogo {CatalogId} copiado al portapapeles", catalog.Id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al compartir catálogo {CatalogId}", catalog.Id);
+            await JSRuntime.InvokeVoidAsync("alert", "Error al generar enlace de compartir. Inténtalo de nuevo.");
+        }
+    }
+
+    private async Task DuplicateCatalog()
+    {
+        if (catalog == null) return;
+
+        try
+        {
+            var userEmail = AuthService.CurrentUserEmail;
+            if (string.IsNullOrEmpty(userEmail))
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Debes estar autenticado para duplicar catálogos.");
+                return;
+            }
+
+            // Crear una solicitud de duplicación
+            var duplicateRequest = new CreateCatalogRequest
+            {
+                Name = $"{catalog.Name} (Copia)",
+                Description = catalog.Description,
+                Category = catalog.Category,
+                Fecha = catalog.Fecha,
+                Headers = catalog.Headers?.ToArray() ?? Array.Empty<string>(),
+                // Nota: No se pueden duplicar filas directamente en CreateCatalogRequest
+                // Las filas se pueden agregar después de crear el catálogo
+            };
+
+            var result = await CatalogService.CreateCatalogAsync(duplicateRequest, userEmail);
+
+            if (result != null)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Catálogo duplicado exitosamente: '{result.Name}'. Las filas no se duplicaron automáticamente.");
+                Navigation.NavigateTo($"/catalog/{result.Id}");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("alert", "Error al duplicar el catálogo. Inténtalo de nuevo.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error al duplicar catálogo {CatalogId}", catalog.Id);
+            await JSRuntime.InvokeVoidAsync("alert", "Error al duplicar el catálogo. Inténtalo de nuevo.");
+        }
+    }
+}
+
+<!-- Modal para agregar filas -->
+<AddRowModal Headers="@(catalog?.Headers ?? Array.Empty<string>())"
+             OnRowSaved="HandleRowSaved" />
+

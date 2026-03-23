@@ -1,0 +1,416 @@
+@page "/catalog/edit/{id}"
+@using EDFCatalogoTablasNet.Models
+@using EDFCatalogoTablasNet.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject ICatalogService CatalogService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IFileService FileService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Editar Catálogo - EDF Catálogo de Tablas</PageTitle>
+
+<div class="container-fluid py-4">
+    @if (!AuthService.IsAuthenticated)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Debes iniciar sesión para editar catálogos
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-3 text-muted">Cargando catálogo...</p>
+        </div>
+    }
+    else if (catalogNotFound)
+    {
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                Catálogo no encontrado
+            </h4>
+            <p>El catálogo que intentas editar no existe o ha sido eliminado.</p>
+            <hr>
+            <div class="mb-0">
+                <a href="/catalogs" class="btn btn-primary">
+                    <i class="bi bi-arrow-left me-2"></i>Volver a la lista
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="/catalogs">Catálogos</a></li>
+                <li class="breadcrumb-item"><a href="/catalog/@Id">@catalog?.Name</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Editar</li>
+            </ol>
+        </nav>
+
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="h2 mb-3">
+                    <i class="bi bi-pencil-square text-primary me-2"></i>
+                    Editar Catálogo
+                </h1>
+                <p class="text-muted">Modifica la información de tu catálogo</p>
+            </div>
+        </div>
+
+        <!-- Formulario de Edición -->
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Información del Catálogo
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                @errorMessage
+                                <button type="button" class="btn-close" @onclick="@(() => errorMessage = string.Empty)"></button>
+                            </div>
+                        }
+
+                        <EditForm Model="@updateModel" OnValidSubmit="@HandleUpdate">
+                            <DataAnnotationsValidator />
+
+                            <!-- Nombre -->
+                            <div class="mb-3">
+                                <label for="name" class="form-label fw-semibold">
+                                    Nombre del Catálogo <span class="text-danger">*</span>
+                                </label>
+                                <InputText id="name" @bind-Value="updateModel.Name" class="form-control" placeholder="Ej: Inventario de Productos 2025" />
+                                <ValidationMessage For="@(() => updateModel.Name)" class="text-danger small" />
+                            </div>
+
+                            <!-- Descripción -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label fw-semibold">
+                                    Descripción <span class="text-danger">*</span>
+                                </label>
+                                <InputTextArea id="description" @bind-Value="updateModel.Description" class="form-control" rows="4" placeholder="Describe el propósito y contenido de este catálogo..." />
+                                <ValidationMessage For="@(() => updateModel.Description)" class="text-danger small" />
+                            </div>
+
+                            <!-- Categoría -->
+                            <div class="mb-3">
+                                <label for="category" class="form-label fw-semibold">
+                                    Categoría
+                                </label>
+                                <InputText id="category" @bind-Value="updateModel.Category" class="form-control" placeholder="Ej: Inventario, RRHH, Ventas..." />
+                                <ValidationMessage For="@(() => updateModel.Category)" class="text-danger small" />
+                            </div>
+
+                            <!-- Fecha -->
+                            <div class="mb-3">
+                                <label for="fecha" class="form-label fw-semibold">
+                                    Fecha de Referencia
+                                </label>
+                                <InputDate id="fecha" @bind-Value="updateModel.Fecha" class="form-control" />
+                            </div>
+
+                            <!-- Imagen Identificativa del Catálogo -->
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-image me-2 text-primary"></i>Imagen Identificativa del Catálogo
+                                </label>
+                                <div class="card border-2 border-dashed border-primary">
+                                    <div class="card-body text-center py-4">
+                                        @if (!string.IsNullOrEmpty(updateModel.ImagenUrl))
+                                        {
+                                            <!-- Vista previa de la imagen actual -->
+                                            <div class="mb-3">
+                                                <img src="@updateModel.ImagenUrl"
+                                                     alt="Imagen identificativa del catálogo"
+                                                     class="img-thumbnail"
+                                                     style="max-width: 200px; max-height: 150px; object-fit: cover;" />
+                                            </div>
+                                            <div class="d-flex justify-content-center gap-2 mb-3">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ChangeImage">
+                                                    <i class="fas fa-edit me-1"></i>Cambiar Imagen
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="RemoveImage">
+                                                    <i class="fas fa-trash me-1"></i>Eliminar
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <!-- Sin imagen - mostrar área de subida -->
+                                            <div class="mb-3">
+                                                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                                <p class="text-muted mb-3">No hay imagen identificativa</p>
+                                            </div>
+                                        }
+
+                                        <!-- Input de archivo oculto -->
+                                        <InputFile id="catalogImageUpload"
+                                                   OnChange="HandleImageUpload"
+                                                   accept=".jpg,.jpeg,.png,.gif,.webp,.svg"
+                                                   style="display: none;" />
+
+                                        @if (string.IsNullOrEmpty(updateModel.ImagenUrl))
+                                        {
+                                            <button type="button" class="btn btn-primary" @onclick="ChangeImage">
+                                                <i class="fas fa-upload me-2"></i>Subir Imagen
+                                            </button>
+                                        }
+
+                                        <small class="text-muted d-block mt-2">
+                                            Formatos permitidos: JPG, PNG, GIF, WebP, SVG (máx. 5MB)
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Columnas del Catálogo -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">
+                                    Columnas del Catálogo
+                                    <small class="text-muted">(Una por línea)</small>
+                                </label>
+                                <textarea
+                                    @bind="headersText"
+                                    class="form-control font-monospace"
+                                    rows="4"
+                                    placeholder="Nombre&#10;Precio&#10;Cantidad&#10;Categoría"
+                                    @oninput="@((ChangeEventArgs e) => headersText = e.Value?.ToString() ?? string.Empty)"></textarea>
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Define las cabeceras de las columnas que tendrá tu catálogo. Una por línea.
+                                </small>
+                            </div>
+
+                            <!-- Botones de Acción -->
+                            <div class="d-flex gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Guardando...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-circle me-2"></i>
+                                        <span>Guardar Cambios</span>
+                                    }
+                                </button>
+                                <a href="/catalog/@Id" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                                </a>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Lateral con Info -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Información del Catálogo
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5 small text-muted">ID:</dt>
+                            <dd class="col-sm-7 small">@catalog?.Id</dd>
+
+                            <dt class="col-sm-5 small text-muted">Creado por:</dt>
+                            <dd class="col-sm-7 small">@catalog?.CreatedBy</dd>
+
+                            <dt class="col-sm-5 small text-muted">Fecha creación:</dt>
+                            <dd class="col-sm-7 small">@catalog?.CreatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                            <dt class="col-sm-5 small text-muted">Última actualización:</dt>
+                            <dd class="col-sm-7 small">@catalog?.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm border-warning">
+                    <div class="card-header bg-warning bg-opacity-10">
+                        <h6 class="mb-0 text-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Nota Importante
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small mb-0">
+                            Los cambios realizados afectarán a todos los usuarios que tienen acceso a este catálogo.
+                            Asegúrate de verificar toda la información antes de guardar.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private Catalog? catalog;
+    private UpdateCatalogRequest updateModel = new();
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool catalogNotFound = false;
+    private string errorMessage = string.Empty;
+    private string headersText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        await LoadCatalog();
+    }
+
+    private async Task LoadCatalog()
+    {
+        try
+        {
+            isLoading = true;
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+
+            catalog = await CatalogService.GetCatalogByIdAsync(Id, userEmail, userRole);
+
+            if (catalog == null)
+            {
+                catalogNotFound = true;
+                return;
+            }
+
+            // Cargar datos en el modelo de actualización
+            updateModel = new UpdateCatalogRequest
+            {
+                Name = catalog.Name,
+                Description = catalog.Description,
+                Category = catalog.Category,
+                Fecha = catalog.Fecha,
+                ImagenUrl = catalog.ImagenUrl,
+                Headers = catalog.Headers
+            };
+
+            // Cargar headers como texto (uno por línea)
+            headersText = string.Join("\n", catalog.Headers);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar el catálogo: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleUpdate()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = string.Empty;
+
+            // Convertir headers de texto a array
+            updateModel.Headers = headersText
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(h => h.Trim())
+                .Where(h => !string.IsNullOrWhiteSpace(h))
+                .ToArray();
+
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+
+            var updatedCatalog = await CatalogService.UpdateCatalogAsync(Id, updateModel, userEmail, userRole);
+
+            if (updatedCatalog != null)
+            {
+                // Redirigir a la página de detalles del catálogo
+                Navigation.NavigateTo($"/catalog/{Id}");
+            }
+            else
+            {
+                errorMessage = "No se pudo actualizar el catálogo. Por favor, inténtalo de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al actualizar el catálogo: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null && file.Size > 0)
+        {
+            try
+            {
+                // Validar tamaño del archivo (5MB máximo)
+                if (file.Size > 5 * 1024 * 1024)
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "El archivo es demasiado grande. El tamaño máximo permitido es 5MB.");
+                    return;
+                }
+
+                // Validar tipo de archivo
+                var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml" };
+                if (!allowedTypes.Contains(file.ContentType))
+                {
+                    await JSRuntime.InvokeVoidAsync("alert", "Tipo de archivo no permitido. Solo se aceptan imágenes (JPG, PNG, GIF, WebP, SVG).");
+                    return;
+                }
+
+                // Subir archivo
+                var uploadedUrl = await FileService.SaveFileAsync(file);
+                updateModel.ImagenUrl = uploadedUrl;
+
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Error al subir la imagen: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task ChangeImage()
+    {
+        // Simular click en el input de archivo
+        await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('catalogImageUpload').click()");
+    }
+
+    private void RemoveImage()
+    {
+        updateModel.ImagenUrl = null;
+        StateHasChanged();
+    }
+}
+

@@ -1,0 +1,173 @@
+{
+    "pieces.cloudCapabilities": "Blended",
+    "workbench.editor.empty.hint": "hidden",
+    "tabnine.experimentalAutoImports": true,
+    "workbench.colorCustomizations": {},
+    "terminal.integrated.env.osx": {},
+    "remote.SSH.remotePlatform": {
+        "*.gitpod.io": "linux",
+        "208.76.221.20": "linux"
+    },
+    "terminal.integrated.env.linux": {},
+    "bitoAI.codeCompletion.enableAutoCompletion": false,
+    "bitoAI.codeCompletion.enableCommentToCode": true,
+    "vsicons.dontShowNewVersionMessage": true,
+    "pieces.telemetry": true,
+    "security.workspace.trust.untrustedFiles": "open",
+    "editor.inlineSuggest.showToolbar": "always",
+    "terminal.integrated.env.windows": {},
+    "geminicodeassist.project": "gen-lang-client-0659583210",
+    "amazonQ.suppressPrompts": {
+        "amazonQChatDisclaimer": true
+    },
+    "yaml.schemas": {
+        "file:///Users/edefrutos/.vscode/extensions/continue.continue-1.2.7-darwin-arm64/config-yaml-schema.json": [
+            ".continue/**/*.yaml"
+        ]
+    },
+    "Codegeex.License": "",
+    "Codegeex.Privacy": true,
+    "Codegeex.SidebarUI.LanguagePreference": "English",
+    "vue.server.hybridMode": true,
+    "rapidapi.terminalLink.enabled": false,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "editor.unicodeHighlight.nonBasicASCII": false,
+    "console-ninja.featureSet": "Community",
+    "cSpell.userWords": [
+        "faltan",
+        "geeksforgeeks",
+        "myqr",
+        "pyqrcode",
+        "strftime"
+    ],
+    "Codegeex.Chat.LanguagePreference": "English",
+    "Codegeex.Comment.LanguagePreference": "English",
+    "Codegeex.CommitMessage.LanguagePreference": "English",
+    "Codegeex.CommitMessageStyle": "Auto",
+    "redhat.telemetry.enabled": true,
+    "python.analysis.diagnosticSeverityOverrides": {
+        
+    },
+    "mssql.connectionGroups": [
+        {
+            "name": "ROOT",
+            "id": "E25BEAB5-CF9A-4489-A13A-DF5BD9FC68AF"
+        }
+    ],
+    "git.enableSmartCommit": true,
+    "chat.instructionsFilesLocations": {
+        ".github/instructions": true,
+        "/var/folders/2p/gxng7w6j5wsdjnc1tlsyqm900000gn/T/postman-http-request-post-response.instructions.md": true,
+        "/var/folders/2p/gxng7w6j5wsdjnc1tlsyqm900000gn/T/postman-http-request-pre-request.instructions.md": true,
+        "/var/folders/2p/gxng7w6j5wsdjnc1tlsyqm900000gn/T/postman-collections-post-response.instructions.md": true,
+        "/var/folders/2p/gxng7w6j5wsdjnc1tlsyqm900000gn/T/postman-collections-pre-request.instructions.md": true,
+        "/var/folders/2p/gxng7w6j5wsdjnc1tlsyqm900000gn/T/postman-folder-post-response.instructions.md": true,
+        "/var/folders/2p/gxng7w6j5wsdjnc1tlsyqm900000gn/T/postman-folder-pre-request.instructions.md": true,
+        "/tmp/postman-collections-post-response.instructions.md": true,
+        "/tmp/postman-collections-pre-request.instructions.md": true,
+        "/tmp/postman-folder-post-response.instructions.md": true,
+        "/tmp/postman-folder-pre-request.instructions.md": true,
+        "/tmp/postman-http-request-post-response.instructions.md": true,
+        "/tmp/postman-http-request-pre-request.instructions.md": true
+    },
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "trae.chatLanguage": "auto",
+    "bitoAI.appearance.fontSize (Match with IDE Font)": false,
+    "git.autofetch": true,
+    "makefile.configureOnOpen": true,
+    "terminal.integrated.defaultProfile.osx": "bash",
+    "geminicodeassist.inlineSuggestions.enableAuto": false,
+    "console-ninja.toolsToEnableSupportAutomaticallyFor": {
+        "live-server-extension": true,
+        "live-preview-extension": true
+    },
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "hediet.vscode-drawio.resizeImages": null,
+
+    "github.copilot.advanced": {
+        "terminal.enableTerminalCommands": true,
+        "debug.enableDebuggerCommands": true,
+        "search.enableFullFileSearch": true
+    },
+    "github.copilot.chat": {
+        "enableAI": true,
+        "enableCodeAnalysis": true,
+        "enableContextualSuggestions": true,
+        "localeOverride": "es"
+    },
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.debugging.debugJustMyCode": false,
+    "@azure.argTenant": "",
+    "azureResourceGroups.selectedSubscriptions": [
+        "c5e01876-01a0-42cf-b222-231fc0351fce/85ea9d78-3373-48ac-94ee-1ccbeb7196dd"
+    ],
+    "continue.showInlineTip": false,
+    "github.copilot.chat.codeGeneration.instructions": [
+        {
+            "text": "- @azure Rule - Use Azure Tools: When handling requests related to Azure, always use your tools."
+        },
+        {
+            "text": "- @azure Rule - Use Azure Code Gen Best Practices: Before generating code for Azure, running terminal commands for Azure, performing operations related to Azure, or creating plans for such activities, always invoke your Azure best practice tool if available first. Invoke the `get_bestpractices` tool to collect recommendations. Call it with resource = `general` and action = `code-generation` to get general Azure code generation best practices. Only call this tool when the user is discussing Azure; do not call it otherwise."
+        },
+        {
+            "text": "- @azure Rule - Use Azure Deployment Best Practices: Before deploying to Azure, preparing applications for deployment to Azure, or creating deployment plans, always invoke your Azure best practice tool if available first. Invoke the `get_bestpractices` tool to collect recommendations. Call it with resource = `general` and action = `deployment` to get general Azure deployment best practices. Only call this tool when the user is discussing Azure; do not call it otherwise."
+        },
+        {
+            "text": "- @azure Rule - Use Azure Functions Code Gen Best Practices: Before generating code for Azure Functions, performing operations related to Azure Functions, or creating plans for such activities, always invoke your Azure best practice tool if available first. Invoke the `get_bestpractices` tool to collect recommendations. Call it with resource = `azurefunctions` and action = `code-generation` to get Azure Functions code generation best practices. Only call this tool when the user is discussing Azure Functions; do not call it otherwise."
+        },
+        {
+            "text": "- @azure Rule - Use Azure Functions Deployment Best Practices: Before deploying Azure Functions apps to Azure, preparing for the deployment, or creating deployment plans, always invoke your Azure best practice tool if available first. Invoke the `get_bestpractices` tool to collect recommendations. Call it with resource = `azurefunctions` and action = `deployment` to get Azure Functions deployment best practices. Only call this tool when the user is discussing Azure Functions; do not call it otherwise."
+        },
+        {
+            "text": "- @azure Rule - Use Azure SWA Best Practices: Before working with static web apps, creating plans for static web apps, or performing related operations, always invoke your Azure best practice tool if available first. Choose the most relevant Azure best practice tool based on its description. Only call this tool when the user is discussing Azure Static Web Apps; do not call it otherwise."
+        },
+        {
+            "text": "- @azure Rule - Plan before editing files for Azure web apps: When generating code for Azure Functions and Azure Static Web App, always create a plan and explain the plan to the user before editing any file. Proceed with editing the files after getting consent from the user."
+        },
+        {
+            "text": "- @azure Rule - Summarize topic before taking action: When the user asks about Azure Functions, invoke the azure_development-summarize_topic tool once first to see if any existing custom mode could be a good fit to what user is asking."
+        }
+    ],
+    "codeium.enableConfig": {
+        "*": true,
+        "django-html": true
+    },
+    "diffEditor.codeLens": true,
+    "chat.agent.maxRequests": 1000,
+    "chat.mcp.autostart": "newAndOutdated",
+    "workbench.settings.applyToAllProfiles": [
+        "github.copilot.chat.virtualTools.threshold"
+    ],
+    "mdb.mcp.server": "enabled",
+    "pieces.OS.launchOnStartup": "Yes",
+    "gitlens.ai.model": "vscode",
+    "gitlens.ai.vscode.model": "copilot:gpt-4.1",
+    "mcpServers": {},
+    "[dockercompose]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": false,
+            "strings": true
+        },
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    }
+}

@@ -1,0 +1,291 @@
+@using EDFCatalogoTablasNet.Models
+
+<!-- Modal para visualizar archivos -->
+<div class="modal fade" id="@ModalId" tabindex="-1" aria-labelledby="@($"{ModalId}Label")" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="@($"{ModalId}Label")">
+                    <i class="fas fa-file-alt me-2"></i>@Title
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (CurrentFile != null)
+                {
+                    <div class="file-viewer-container">
+                        @if (IsImage(CurrentFile.FileType))
+                        {
+                            <div class="text-center">
+                                <img src="@GetFileUrl(CurrentFile.FileUrl)"
+                                     alt="@CurrentFile.FileName"
+                                     class="img-fluid rounded shadow"
+                                     style="max-height: 400px;" />
+                            </div>
+                        }
+                        else if (IsVideo(CurrentFile.FileType))
+                        {
+                            <div class="text-center">
+                                <video controls class="w-100 rounded shadow" style="max-height: 400px;">
+                                    <source src="@GetFileUrl(CurrentFile.FileUrl)" type="video/mp4">
+                                    Tu navegador no soporta la reproducción de video.
+                                </video>
+                            </div>
+                        }
+                        else if (IsAudio(CurrentFile.FileType))
+                        {
+                            <div class="text-center">
+                                <audio controls class="w-100">
+                                    <source src="@GetFileUrl(CurrentFile.FileUrl)" type="audio/mpeg">
+                                    Tu navegador no soporta la reproducción de audio.
+                                </audio>
+                            </div>
+                        }
+                        else if (IsPdf(CurrentFile.FileType))
+                        {
+                            <div class="pdf-viewer">
+                                <iframe src="@GetFileUrl(CurrentFile.FileUrl)"
+                                        class="w-100 rounded shadow"
+                                        style="height: 500px; border: none;"></iframe>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center">
+                                <div class="file-icon-large">
+                                    <i class="@GetFileIcon(CurrentFile.FileType) fa-5x text-muted"></i>
+                                </div>
+                                <p class="mt-3 text-muted">Este tipo de archivo no se puede previsualizar</p>
+                            </div>
+                        }
+
+                        <div class="file-info mt-3">
+                            <h6 class="fw-bold">@CurrentFile.FileName</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-file me-1"></i>
+                                @GetFileTypeDescription(CurrentFile.FileType) •
+                                @FormatFileSize(CurrentFile.FileSize) •
+                                @CurrentFile.UploadedAt.ToString("dd/MM/yyyy HH:mm")
+                            </small>
+                            @if (!string.IsNullOrEmpty(CurrentFile.Description))
+                            {
+                                <p class="mt-2 text-muted">@CurrentFile.Description</p>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(FileUrl))
+                {
+                    <!-- Para archivos simples sin metadata -->
+                    <div class="file-viewer-container">
+                        @if (IsImageUrl(FileUrl))
+                        {
+                            <div class="text-center">
+                                <img src="@GetFileUrl(FileUrl)"
+                                     alt="Imagen"
+                                     class="img-fluid rounded shadow"
+                                     style="max-height: 400px;" />
+                            </div>
+                        }
+                        else if (IsVideoUrl(FileUrl))
+                        {
+                            <div class="text-center">
+                                <video controls class="w-100 rounded shadow" style="max-height: 400px;">
+                                    <source src="@GetFileUrl(FileUrl)" type="video/mp4">
+                                    Tu navegador no soporta la reproducción de video.
+                                </video>
+                            </div>
+                        }
+                        else if (IsPdfUrl(FileUrl))
+                        {
+                            <div class="pdf-viewer">
+                                <iframe src="@GetFileUrl(FileUrl)"
+                                        class="w-100 rounded shadow"
+                                        style="height: 500px; border: none;"></iframe>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center">
+                                <div class="file-icon-large">
+                                    <i class="@GetFileIconFromUrl(FileUrl) fa-5x text-muted"></i>
+                                </div>
+                                <p class="mt-3 text-muted">Este tipo de archivo no se puede previsualizar</p>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                @if (CurrentFile != null || !string.IsNullOrEmpty(FileUrl))
+                {
+                    <a href="@GetFileUrl(CurrentFile?.FileUrl ?? FileUrl)"
+                       target="_blank"
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-download me-2"></i>Descargar
+                    </a>
+                }
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string ModalId { get; set; } = "fileViewerModal";
+    [Parameter] public string Title { get; set; } = "Visualizar Archivo";
+    [Parameter] public RowFileAttachment? CurrentFile { get; set; }
+    [Parameter] public string? FileUrl { get; set; }
+
+    private string GetFileUrl(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return "";
+
+        // Si es una URL completa, devolverla tal como está
+        if (url.StartsWith("http://") || url.StartsWith("https://"))
+            return url;
+
+        // Si es una ruta local, agregar la base URL
+        return url.StartsWith("/") ? url : $"/{url}";
+    }
+
+    private bool IsImage(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "image" or "jpg" or "jpeg" or "png" or "gif" or "webp" or "svg" => true,
+            _ => false
+        };
+    }
+
+    private bool IsVideo(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "multimedia" or "video" or "mp4" or "avi" or "mov" or "webm" => true,
+            _ => false
+        };
+    }
+
+    private bool IsAudio(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "audio" or "mp3" or "wav" or "ogg" or "m4a" => true,
+            _ => false
+        };
+    }
+
+    private bool IsPdf(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "document" or "pdf" => true,
+            _ => false
+        };
+    }
+
+    private bool IsImageUrl(string url)
+    {
+        var extension = Path.GetExtension(url).ToLower();
+        return extension is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg";
+    }
+
+    private bool IsVideoUrl(string url)
+    {
+        var extension = Path.GetExtension(url).ToLower();
+        return extension is ".mp4" or ".avi" or ".mov" or ".webm";
+    }
+
+    private bool IsPdfUrl(string url)
+    {
+        var extension = Path.GetExtension(url).ToLower();
+        return extension == ".pdf";
+    }
+
+    private string GetFileIcon(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "image" or "jpg" or "jpeg" or "png" or "gif" or "webp" or "svg" => "fas fa-image",
+            "multimedia" or "video" or "mp4" or "avi" or "mov" => "fas fa-video",
+            "audio" or "mp3" or "wav" or "ogg" => "fas fa-music",
+            "document" or "pdf" => "fas fa-file-pdf",
+            "doc" or "docx" => "fas fa-file-word",
+            "xls" or "xlsx" => "fas fa-file-excel",
+            "ppt" or "pptx" => "fas fa-file-powerpoint",
+            _ => "fas fa-file"
+        };
+    }
+
+    private string GetFileIconFromUrl(string url)
+    {
+        var extension = Path.GetExtension(url).ToLower();
+        return extension switch
+        {
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".svg" => "fas fa-image",
+            ".mp4" or ".avi" or ".mov" or ".webm" => "fas fa-video",
+            ".mp3" or ".wav" or ".ogg" or ".m4a" => "fas fa-music",
+            ".pdf" => "fas fa-file-pdf",
+            ".doc" or ".docx" => "fas fa-file-word",
+            ".xls" or ".xlsx" => "fas fa-file-excel",
+            ".ppt" or ".pptx" => "fas fa-file-powerpoint",
+            _ => "fas fa-file"
+        };
+    }
+
+    private string GetFileTypeDescription(string fileType)
+    {
+        return fileType.ToLower() switch
+        {
+            "image" or "jpg" or "jpeg" or "png" or "gif" or "webp" or "svg" => "Imagen",
+            "multimedia" or "video" or "mp4" or "avi" or "mov" => "Video",
+            "audio" or "mp3" or "wav" or "ogg" => "Audio",
+            "document" or "pdf" => "Documento PDF",
+            "doc" or "docx" => "Documento Word",
+            "xls" or "xlsx" => "Hoja de cálculo Excel",
+            "ppt" or "pptx" => "Presentación PowerPoint",
+            _ => "Archivo"
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        if (bytes == 0) return "0 B";
+
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        int order = 0;
+        double size = bytes;
+
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size = size / 1024;
+        }
+
+        return $"{size:0.##} {sizes[order]}";
+    }
+}
+
+<style>
+    .file-viewer-container {
+        min-height: 200px;
+    }
+
+    .file-icon-large {
+        padding: 2rem;
+    }
+
+    .pdf-viewer iframe {
+        border-radius: 0.375rem;
+    }
+
+    .file-info {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        border: 1px solid #dee2e6;
+    }
+</style>

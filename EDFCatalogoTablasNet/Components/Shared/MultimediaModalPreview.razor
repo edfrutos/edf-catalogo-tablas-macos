@@ -1,0 +1,196 @@
+@using Microsoft.AspNetCore.Components
+@inject IJSRuntime JSRuntime
+
+<div class="multimedia-modal-preview-container">
+    @if (!string.IsNullOrEmpty(Url))
+    {
+        @if (IsImage(Url))
+        {
+            <!-- Preview de imagen con modal -->
+            <div class="image-preview">
+                <img src="@Url"
+                     class="@CssClass"
+                     alt="@AltText"
+                     style="@GetComputedStyle()"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <div class="alert alert-warning" style="display: none;">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No se puede cargar la imagen.
+                </div>
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary mt-2 w-100"
+                        @onclick="@(() => OpenModal(Url, "Imagen", "image"))">
+                    <i class="fas fa-expand me-1"></i>Ver en Modal
+                </button>
+            </div>
+        }
+        else if (IsVideo(Url))
+        {
+            <!-- Preview de video con modal -->
+            <div class="video-preview">
+                @if (IsYouTube(Url))
+                {
+                    <iframe width="@MaxWidth" height="@MaxHeight"
+                            src="@GetYouTubeEmbedUrl(Url)"
+                            frameborder="0"
+                            allowfullscreen>
+                    </iframe>
+                }
+                else
+                {
+                    <video controls style="@GetComputedStyle()">
+                        <source src="@Url" type="video/mp4">
+                        Tu navegador no soporta el elemento de video.
+                    </video>
+                }
+                <button type="button"
+                        class="btn btn-sm btn-outline-success mt-2 w-100"
+                        @onclick="@(() => OpenModal(Url, "Video", "multimedia"))">
+                    <i class="fas fa-expand me-1"></i>Ver en Modal
+                </button>
+            </div>
+        }
+        else if (IsAudio(Url))
+        {
+            <!-- Preview de audio con modal -->
+            <div class="audio-preview">
+                <audio controls style="width: 100%; max-width: @(MaxWidth)px;">
+                    <source src="@Url" type="audio/mpeg">
+                    Tu navegador no soporta el elemento de audio.
+                </audio>
+                <button type="button"
+                        class="btn btn-sm btn-outline-info mt-2 w-100"
+                        @onclick="@(() => OpenModal(Url, "Audio", "multimedia"))">
+                    <i class="fas fa-expand me-1"></i>Ver en Modal
+                </button>
+            </div>
+        }
+        else if (IsDocument(Url))
+        {
+            <div class="document-preview">
+                <div class="card" style="max-width: 300px;">
+                    <div class="card-body text-center">
+                        <i class="fas fa-file-alt fa-3x text-primary mb-2"></i>
+                        <h6 class="card-title">Documento</h6>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                @onclick="@(() => OpenModal(Url, "Documento", "document"))">
+                            <i class="fas fa-expand me-1"></i>Ver en Modal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- URL genérica con modal -->
+            <div class="generic-url-preview">
+                <div class="card" style="max-width: 300px;">
+                    <div class="card-body text-center">
+                        <i class="fas fa-link fa-3x text-secondary mb-2"></i>
+                        <h6 class="card-title">Enlace</h6>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                @onclick="@(() => OpenModal(Url, "Enlace", "other"))">
+                            <i class="fas fa-expand me-1"></i>Ver en Modal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- Modal para visualizar el contenido -->
+<FileViewerModal ModalId="@ModalId"
+                 Title="@CurrentTitle"
+                 FileUrl="@CurrentUrl" />
+
+@code {
+    [Parameter] public string? Url { get; set; }
+    [Parameter] public string CssClass { get; set; } = "img-thumbnail";
+    [Parameter] public string Style { get; set; } = "";
+    [Parameter] public string AltText { get; set; } = "Vista previa";
+    [Parameter] public string MaxWidth { get; set; } = "200";
+    [Parameter] public string MaxHeight { get; set; } = "150";
+
+    private string ModalId => $"modal_{Url?.GetHashCode() ?? 0}";
+    private string CurrentUrl = "";
+    private string CurrentTitle = "";
+
+    private void OpenModal(string url, string title, string fileType)
+    {
+        CurrentUrl = url;
+        CurrentTitle = title;
+        JSRuntime.InvokeVoidAsync("showModal", ModalId);
+    }
+
+    private string GetComputedStyle()
+    {
+        var baseStyle = $"max-width: {MaxWidth}px; max-height: {MaxHeight}px;";
+        return string.IsNullOrEmpty(Style) ? baseStyle : $"{baseStyle} {Style}";
+    }
+
+    private bool IsImage(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return false;
+        var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg" };
+        return imageExtensions.Any(ext => url.ToLower().Contains(ext));
+    }
+
+    private bool IsVideo(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return false;
+        if (IsYouTube(url)) return true;
+        var videoExtensions = new[] { ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm" };
+        return videoExtensions.Any(ext => url.ToLower().Contains(ext));
+    }
+
+    private bool IsAudio(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return false;
+        var audioExtensions = new[] { ".mp3", ".wav", ".ogg", ".m4a", ".aac" };
+        return audioExtensions.Any(ext => url.ToLower().Contains(ext));
+    }
+
+    private bool IsDocument(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return false;
+        var docExtensions = new[] { ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt" };
+        return docExtensions.Any(ext => url.ToLower().Contains(ext));
+    }
+
+    private bool IsYouTube(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return false;
+        return url.Contains("youtube.com") || url.Contains("youtu.be");
+    }
+
+    private string GetYouTubeEmbedUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return "";
+
+        if (url.Contains("youtu.be"))
+        {
+            var videoId = url.Split('/').Last().Split('?').First();
+            return $"https://www.youtube.com/embed/{videoId}";
+        }
+        else if (url.Contains("youtube.com"))
+        {
+            var videoId = url.Split('=').Last().Split('&').First();
+            return $"https://www.youtube.com/embed/{videoId}";
+        }
+
+        return url;
+    }
+}
+
+<style>
+    .multimedia-modal-preview-container {
+        position: relative;
+    }
+
+    .multimedia-modal-preview-container .btn {
+        font-size: 0.875rem;
+    }
+</style>

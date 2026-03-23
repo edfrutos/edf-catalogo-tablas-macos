@@ -1,0 +1,4 @@
+[settings]
+# Copia como ~/.wakatime.cfg o renombra según tu herramienta.
+# Obtén la clave en https://wakatime.com/settings/api-key
+api_key =

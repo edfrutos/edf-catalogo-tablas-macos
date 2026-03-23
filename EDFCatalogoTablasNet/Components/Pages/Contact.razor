@@ -1,0 +1,219 @@
+@page "/contact"
+@layout EmptyLayout
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Contacto - EDF Catálogo de Tablas</PageTitle>
+
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-light">
+    <div class="row justify-content-center w-100">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-info text-white text-center py-4">
+                    <i class="fas fa-envelope fa-3x mb-3"></i>
+                    <h3 class="mb-0">Contacta con Nosotros</h3>
+                    <p class="mb-0 opacity-75">Estamos aquí para ayudarte</p>
+                </div>
+                <div class="card-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            @errorMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle me-2"></i>
+                            @successMessage
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@contactModel" OnValidSubmit="@HandleContact" FormName="ContactForm">
+                        <DataAnnotationsValidator />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">
+                                    <i class="fas fa-user me-2"></i>Nombre *
+                                </label>
+                                <InputText @bind-Value="contactModel.Name"
+                                          class="form-control form-control-lg"
+                                          id="name"
+                                          placeholder="Tu nombre"
+                                          disabled="@isLoading" />
+                                <ValidationMessage For="@(() => contactModel.Name)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">
+                                    <i class="fas fa-envelope me-2"></i>Email *
+                                </label>
+                                <InputText @bind-Value="contactModel.Email"
+                                          class="form-control form-control-lg"
+                                          id="email"
+                                          placeholder="tu.email@empresa.com"
+                                          disabled="@isLoading" />
+                                <ValidationMessage For="@(() => contactModel.Email)" class="text-danger small" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">
+                                    <i class="fas fa-phone me-2"></i>Teléfono (Opcional)
+                                </label>
+                                <InputText @bind-Value="contactModel.Phone"
+                                          class="form-control form-control-lg"
+                                          id="phone"
+                                          placeholder="+34 123 456 789"
+                                          disabled="@isLoading" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="company" class="form-label">
+                                    <i class="fas fa-building me-2"></i>Empresa (Opcional)
+                                </label>
+                                <InputText @bind-Value="contactModel.Company"
+                                          class="form-control form-control-lg"
+                                          id="company"
+                                          placeholder="Nombre de tu empresa"
+                                          disabled="@isLoading" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="queryType" class="form-label">
+                                    <i class="fas fa-tags me-2"></i>Tipo de Consulta
+                                </label>
+                                <InputSelect @bind-Value="contactModel.QueryType"
+                                            class="form-control form-control-lg"
+                                            id="queryType"
+                                            disabled="@isLoading">
+                                    <option value="General">Consulta General</option>
+                                    <option value="Soporte">Soporte Técnico</option>
+                                    <option value="Ventas">Información Comercial</option>
+                                    <option value="Bug">Reportar Error</option>
+                                    <option value="Feature">Solicitar Funcionalidad</option>
+                                    <option value="Feedback">Feedback</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="subject" class="form-label">
+                                    <i class="fas fa-clipboard me-2"></i>Asunto *
+                                </label>
+                                <InputText @bind-Value="contactModel.Subject"
+                                          class="form-control form-control-lg"
+                                          id="subject"
+                                          placeholder="Breve descripción del tema"
+                                          disabled="@isLoading" />
+                                <ValidationMessage For="@(() => contactModel.Subject)" class="text-danger small" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="message" class="form-label">
+                                <i class="fas fa-comment me-2"></i>Mensaje *
+                            </label>
+                            <InputTextArea @bind-Value="contactModel.Message"
+                                          class="form-control"
+                                          id="message"
+                                          rows="5"
+                                          placeholder="Describe tu consulta o mensaje con detalle..."
+                                          disabled="@isLoading" />
+                            <ValidationMessage For="@(() => contactModel.Message)" class="text-danger small" />
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Máximo 2000 caracteres. Caracteres restantes: @(2000 - (contactModel.Message?.Length ?? 0))
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-info btn-lg" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Enviando mensaje...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    <span>Enviar Mensaje</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="card-footer bg-light text-center">
+                    <p class="mb-2">¿Necesitas acceder a tu cuenta?</p>
+                    <a href="/login" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                    </a>
+                    <a href="/register" class="btn btn-outline-success">
+                        <i class="fas fa-user-plus me-2"></i>Registrarse
+                    </a>
+                </div>
+            </div>
+
+            <!-- Information card -->
+            <div class="card mt-3 border-info">
+                <div class="card-body bg-info bg-opacity-10">
+                    <h6 class="card-title text-info">
+                        <i class="fas fa-clock me-2"></i>Tiempo de Respuesta
+                    </h6>
+                    <p class="card-text small mb-0">
+                        Normalmente respondemos en <strong>24-48 horas</strong> días laborables.
+                        Para consultas urgentes, incluye "URGENTE" en el asunto.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ContactModel contactModel = new ContactModel();
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool isLoading = false;
+
+    private async Task HandleContact()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            var success = await AuthService.SendContactMessageAsync(contactModel);
+
+            if (success)
+            {
+                successMessage = "¡Mensaje enviado correctamente! Te responderemos lo antes posible.";
+
+                // Limpiar el formulario
+                contactModel = new ContactModel();
+
+                // Opcional: redirigir después de unos segundos
+                await Task.Delay(3000);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = "Error al enviar el mensaje. Por favor, inténtalo de nuevo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al enviar mensaje: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
