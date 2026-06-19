@@ -20,19 +20,21 @@ Esta aplicación nativa para macOS permite gestionar catálogos de tablas con in
 
 ## Configuración del proyecto
 
-1. Clona el repositorio:
+1. Clona el repositorio y entra en el directorio Swift:
    ```
    git clone https://github.com/yourusername/edf_catalogotablas_macOS.git
    cd edf_catalogotablas_macOS/EDFCatalogoSwift
    ```
 
-2. Instala las dependencias:
+2. Crea el fichero de entorno a partir de la plantilla (no subas `.env` a git):
+   ```
+   cp .env.example .env
+   ```
+   Edita `.env` con tu URI de MongoDB, y si usas S3, las claves AWS, `AWS_REGION` (p. ej. `eu-south-2`), `S3_BUCKET_NAME` (p. ej. `edf-catalogotablas-sp`) y `USE_S3=true`.
+
+3. Instala dependencias y compila:
    ```
    swift package resolve
-   ```
-
-3. Compila el proyecto:
-   ```
    swift build
    ```
 
@@ -54,6 +56,8 @@ Este script realizará las siguientes acciones:
 
 La aplicación compilada estará disponible en `bin/EDF Catálogo de Tablas.app`.
 
+**AWS/S3 en el `.app`:** el ejecutable embebido no incluye secretos. Para que la app firmada encuentre credenciales al abrirla desde Finder, copia tu `.env` a `Contents/Resources/.env` dentro del bundle (el script de build recuerda la ruta al terminar). Alternativa: exportar las variables en el entorno desde donde lances el binario.
+
 ## Credenciales de prueba
 
 Para probar la aplicación, puedes utilizar las siguientes credenciales:
@@ -72,11 +76,11 @@ Para probar la aplicación, puedes utilizar las siguientes credenciales:
 
 ## Configuración de MongoDB Atlas
 
-La aplicación está configurada para conectarse a MongoDB Atlas. Los parámetros de conexión están definidos en `Sources/Services/MongoService.swift`.
+La lectura de `MONGO_URI` y nombres de base se hace desde el entorno (fichero `.env` cargado en tiempo de ejecución). La lógica de cliente está en `Sources/Services/MongoService.swift`.
 
 ## Configuración de AWS S3
 
-La aplicación está configurada para utilizar AWS S3 para el almacenamiento de archivos. Los parámetros de conexión están definidos en `Sources/Services/S3Service.swift`.
+`S3Service.swift` usa variables de entorno (`AWS_*`, `S3_BUCKET_NAME`, `USE_S3`). Si falta algún valor esencial, el servicio puede operar en modo desactivado según `USE_S3`. Región y bucket por defecto en código están alineados con el entorno de despliegue actual (`eu-south-2`, bucket `edf-catalogotablas-sp`); conviene sobreescribirlos siempre con `.env`.
 
 ## Licencia
 
