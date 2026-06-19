@@ -5,4 +5,5 @@
     Layout = "_Layout";
 }
 
-<component type="typeof(EDFCatalogoTablasNet.Components.App)" render-mode="ServerPrerendered" />
+@* Server (sin prerender) evita que la barra muestre "no autenticado" antes de conectar el circuito y rehidratar la sesión. *@
+<component type="typeof(EDFCatalogoTablasNet.Components.App)" render-mode="Server" />

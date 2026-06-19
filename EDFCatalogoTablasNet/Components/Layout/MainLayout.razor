@@ -1,10 +1,10 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.AspNetCore.Components
 @using EDFCatalogoTablasNet.Services
+@using EDFCatalogoTablasNet
 @using EDFCatalogoTablasNet.Components.Shared
 @using EDFCatalogoTablasNet.Models
 @inject IAuthService AuthService
-@inject NavigationManager Navigation
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 
@@ -37,7 +37,7 @@
                         <i class="fas fa-plus me-1"></i>Crear Catálogo
                     </a>
                 </li>
-                @if (AuthService.IsAuthenticated && AuthService.CurrentUserRole == "Admin")
+                @if (AuthService.IsAuthenticated && RoleHelper.IsAdmin(AuthService.CurrentUserRole))
                 {
                     <li class="nav-item">
                         <a class="nav-link" href="/admin/users">
@@ -50,12 +50,14 @@
             <ul class="navbar-nav">
                 @if (AuthService.IsAuthenticated)
                 {
-                    <!-- Usuario autenticado -->
+                    <!-- Usuario autenticado: botón evita href="#" con Blazor/Bootstrap -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <button type="button" class="btn btn-link nav-link dropdown-toggle text-white text-decoration-none border-0 py-2 px-3"
+                                id="userNavDropdown"
+                                data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-haspopup="true">
                             <i class="fas fa-user-circle me-1"></i>@currentUserName
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userNavDropdown">
                             <li>
                                 <span class="dropdown-item-text">
                                     <small class="text-muted">
@@ -66,13 +68,13 @@
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item" href="/profile">
-                                    <i class="fas fa-user-circle me-1"></i>Mi Perfil
+                                    <i class="fas fa-id-card me-1"></i>Perfil de usuario
                                 </a>
                             </li>
                             <li>
-                                <button class="dropdown-item" @onclick="HandleLogout">
-                                    <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
-                                </button>
+                                <a class="dropdown-item" href="/logout">
+                                    <i class="fas fa-sign-out-alt me-1"></i>Cerrar sesión
+                                </a>
                             </li>
                         </ul>
                     </li>
@@ -81,7 +83,7 @@
                 {
                     <!-- Usuario no autenticado -->
                     <li class="nav-item">
-                        <a class="nav-link" href="/test-login">
+                        <a class="nav-link" href="/login">
                             <i class="fas fa-sign-in-alt me-1"></i>Iniciar Sesión
                         </a>
                     </li>
@@ -94,10 +96,12 @@
 
                 <!-- Menú de ayuda (siempre visible) -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                    <button type="button" class="btn btn-link nav-link dropdown-toggle text-white text-decoration-none border-0 py-2 px-3"
+                            id="helpNavDropdown"
+                            data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-haspopup="true">
                         <i class="fas fa-question-circle me-1"></i>Ayuda
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-end">
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="helpNavDropdown">
                         <li>
                             <a class="dropdown-item" href="/help">
                                 <i class="fas fa-book me-1"></i>Guía de Usuario
@@ -222,24 +226,6 @@
         else
         {
             currentUserName = "Usuario";
-        }
-    }
-
-    private async Task HandleLogout()
-    {
-        try
-        {
-            await AuthService.LogoutAsync();
-
-            // Mostrar mensaje de confirmación (opcional)
-            await JSRuntime.InvokeVoidAsync("console.log", "Sesión cerrada correctamente");
-
-            // Redirigir a login con forceLoad para navegar correctamente a Razor Page
-            Navigation.NavigateTo("/login", forceLoad: true);
-        }
-        catch (Exception ex)
-        {
-            await JSRuntime.InvokeVoidAsync("console.error", $"Error al cerrar sesión: {ex.Message}");
         }
     }
 

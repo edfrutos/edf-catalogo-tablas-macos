@@ -1,6 +1,8 @@
 @page "/"
 @using EDFCatalogoTablasNet.Services
 @inject ICatalogService CatalogService
+@inject IAuthService AuthService
+@implements IDisposable
 
 <PageTitle>Inicio - EDF Catálogo de Tablas</PageTitle>
 
@@ -171,18 +173,40 @@
 
 @code {
     private int totalCatalogs;
-    
+
     protected override async Task OnInitializedAsync()
+    {
+        AuthService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await RefreshCatalogCountAsync();
+    }
+
+    private async void OnAuthenticationStateChanged(object? sender, bool _)
+    {
+        await InvokeAsync(async () =>
+        {
+            await RefreshCatalogCountAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshCatalogCountAsync()
     {
         try
         {
-            var catalogs = await CatalogService.GetAllCatalogsAsync();
-            totalCatalogs = catalogs.Count();
+            var catalogs = await CatalogService.GetAllCatalogsAsync(
+                AuthService.CurrentUserEmail,
+                AuthService.CurrentUserRole);
+            totalCatalogs = catalogs.Count;
         }
         catch
         {
             totalCatalogs = 0;
         }
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 }
 

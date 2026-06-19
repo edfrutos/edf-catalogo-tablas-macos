@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using EDFCatalogoTablasNet.Services;
 
 namespace EDFCatalogoTablasNet.Pages
@@ -51,30 +49,15 @@ namespace EDFCatalogoTablasNet.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Debug: Verificar valores recibidos
-            Console.WriteLine($"Email recibido: '{Email}'");
-            Console.WriteLine($"Password recibido: '{Password}'");
-            Console.WriteLine($"ModelState válido: {ModelState.IsValid}");
-            Console.WriteLine($"Request Form Keys: {string.Join(", ", Request.Form.Keys)}");
-
-            // Intentar obtener valores directamente del formulario si están vacíos
             if (string.IsNullOrEmpty(Email) && Request.Form.ContainsKey("Email"))
-            {
                 Email = Request.Form["Email"].ToString();
-                Console.WriteLine($"Email desde Form: '{Email}'");
-            }
 
             if (string.IsNullOrEmpty(Password) && Request.Form.ContainsKey("Password"))
-            {
                 Password = Request.Form["Password"].ToString();
-                Console.WriteLine($"Password desde Form: '{Password}'");
-            }
 
-            // Validación simple manual
             if (string.IsNullOrEmpty(Email) || string.IsNullOrEmpty(Password))
             {
-                ErrorMessage = "Por favor, completa el email y la contraseña.";
-                Console.WriteLine($"Validación fallida - Email: '{Email}', Password: '{Password}'");
+                ErrorMessage = "Por favor, completa el correo o usuario y la contraseña.";
                 return Page();
             }
 

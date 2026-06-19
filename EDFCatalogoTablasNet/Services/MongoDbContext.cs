@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using MongoDB.Driver;
 using EDFCatalogoTablasNet.Models;
 using EDFCatalogoTablasNet.Configuration;
@@ -26,6 +27,10 @@ namespace EDFCatalogoTablasNet.Services
 
         public IMongoCollection<Catalog> Catalogs =>
             _database.GetCollection<Catalog>(_settings.CatalogsCollection);
+
+        /// <summary>Lectura BSON cruda (catálogos legacy con esquema heterogéneo).</summary>
+        public IMongoCollection<BsonDocument> CatalogsBson =>
+            _database.GetCollection<BsonDocument>(_settings.CatalogsCollection);
 
         public IMongoCollection<ContactModel> Contacts =>
             _database.GetCollection<ContactModel>(_settings.ContactsCollection);

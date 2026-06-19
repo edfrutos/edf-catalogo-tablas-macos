@@ -3,14 +3,16 @@ using System.Text.Json;
 using EDFCatalogoTablasNet.Services;
 using EDFCatalogoTablasNet.Configuration;
 using Microsoft.AspNetCore.Components.Server.Circuits;
+using MongoDB.Bson;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Cargar appsettings.local.json (con credenciales sensibles)
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
 
-// Configurar URLs específicas
-builder.WebHost.UseUrls("http://localhost:5005", "https://localhost:7005");
+// URLs por defecto; permitir ASPNETCORE_URLS / --urls (p. ej. E2E en otro puerto sin tocar :5005).
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ASPNETCORE_URLS")))
+    builder.WebHost.UseUrls("http://localhost:5005", "https://localhost:7005");
 
 // Agregar servicios al contenedor
 builder.Services.AddControllers();
@@ -152,17 +154,55 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseRouting();
 app.UseSession();
+app.Use(async (context, next) =>
+{
+    if (context.Session is { IsAvailable: true })
+        await context.Session.LoadAsync();
+    await next();
+});
 app.UseAuthorization();
 
 // IMPORTANTE: Mapear endpoints específicos ANTES del fallback
-// Endpoint de salud
-app.MapGet("/health", () => new
+// Salud: ping a la base MongoDB configurada (nombre en appsettings), no solo el proceso HTTP.
+app.MapGet("/health", async (
+    MongoDbContext mongo,
+    MongoDbSettings mongoSettings,
+    IHostEnvironment env,
+    ILoggerFactory logFactory,
+    CancellationToken cancellationToken) =>
 {
-    Status = "Healthy",
-    Timestamp = DateTime.UtcNow,
-    Version = "1.0.0",
-    Environment = app.Environment.EnvironmentName,
-    Port = "5005"
+    var logger = logFactory.CreateLogger("HealthCheck");
+    try
+    {
+        using var pingCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        pingCts.CancelAfter(TimeSpan.FromSeconds(5));
+        await mongo.Database.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: pingCts.Token);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Health check: falló ping MongoDB (base {Database})", mongoSettings.DatabaseName);
+        return Results.Json(new
+        {
+            Status = "Unhealthy",
+            MongoDb = new { Ok = false },
+            Database = mongoSettings.DatabaseName,
+            Timestamp = DateTime.UtcNow,
+            Version = "1.0.0",
+            Environment = env.EnvironmentName,
+            Port = "5005"
+        }, statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    return Results.Ok(new
+    {
+        Status = "Healthy",
+        MongoDb = new { Ok = true },
+        Database = mongoSettings.DatabaseName,
+        Timestamp = DateTime.UtcNow,
+        Version = "1.0.0",
+        Environment = env.EnvironmentName,
+        Port = "5005"
+    });
 });
 
 // Mapear controladores API

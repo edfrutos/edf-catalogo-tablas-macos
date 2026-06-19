@@ -1,8 +1,11 @@
+using MongoDB.Bson.Serialization.Attributes;
+
 namespace EDFCatalogoTablasNet.Models;
 
 /// <summary>
 /// Representa una fila individual del catálogo con sus datos y archivos
 /// </summary>
+[BsonIgnoreExtraElements]
 public class CatalogRow
 {
     /// <summary>

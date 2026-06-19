@@ -16,14 +16,9 @@ namespace EDFCatalogoTablasNet.Pages
 
         public async Task<IActionResult> OnGetAsync()
         {
-            // Cerrar sesión
             await _authService.LogoutAsync();
-
-            // Opcional: agregar mensaje de confirmación
             TempData["SuccessMessage"] = "Has cerrado sesión correctamente.";
-
-            // Mostrar la página de logout por 2 segundos antes de redirigir
-            return Page();
+            return Redirect("/login");
         }
 
         public async Task<IActionResult> OnPostAsync()

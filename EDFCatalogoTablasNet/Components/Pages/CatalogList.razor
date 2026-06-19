@@ -1,4 +1,5 @@
 @page "/catalogs"
+@using EDFCatalogoTablasNet
 @using EDFCatalogoTablasNet.Services
 @using EDFCatalogoTablasNet.Models
 @using EDFCatalogoTablasNet.Components.Shared
@@ -20,7 +21,7 @@
                     </a>
                 </li>
                 <li class="breadcrumb-item active">
-                    <i class="fas fa-list me-1"></i>@(AuthService.CurrentUserRole == "Admin" ? "Todos los Catálogos" : "Mis Catálogos")
+                    <i class="fas fa-list me-1"></i>@(RoleHelper.IsAdmin(AuthService.CurrentUserRole) ? "Todos los Catálogos" : "Mis Catálogos")
                 </li>
             </ol>
         </nav>
@@ -30,10 +31,10 @@
             <div>
                 <h1 class="display-6 fw-bold mb-2">
                     <i class="fas fa-list-alt me-2 text-primary"></i>
-                    @(AuthService.CurrentUserRole == "Admin" ? "Todos los Catálogos" : "Mis Catálogos")
+                    @(RoleHelper.IsAdmin(AuthService.CurrentUserRole) ? "Todos los Catálogos" : "Mis Catálogos")
                 </h1>
                 <p class="text-muted mb-0">
-                    @if (AuthService.CurrentUserRole == "Admin")
+                    @if (RoleHelper.IsAdmin(AuthService.CurrentUserRole))
                     {
                         <text>Como administrador, puedes ver y gestionar todos los catálogos del sistema.</text>
                     }
@@ -324,9 +325,9 @@ else
         {
             await LoadCatalogs();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // En caso de error, mostrar lista vacía
+            Logger.LogError(ex, "[CatalogList] Error al cargar catálogos");
             allCatalogs = new List<Catalog>();
             filteredCatalogs = new List<Catalog>();
         }

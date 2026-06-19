@@ -56,5 +56,10 @@ namespace EDFCatalogoTablasNet.Services
         /// Evento que se dispara cuando el estado de autenticación cambia
         /// </summary>
         event EventHandler<bool>? AuthenticationStateChanged;
+
+        /// <summary>
+        /// Notifica a los suscriptores el estado actual (p. ej. tras rehidratar sesión en el circuito Blazor).
+        /// </summary>
+        void NotifyAuthenticationStateChanged();
     }
 }

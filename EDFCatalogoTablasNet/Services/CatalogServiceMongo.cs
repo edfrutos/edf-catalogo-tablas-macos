@@ -1,4 +1,7 @@
+using EDFCatalogoTablasNet;
 using EDFCatalogoTablasNet.Models;
+using EDFCatalogoTablasNet.Serialization;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace EDFCatalogoTablasNet.Services;
@@ -21,35 +24,28 @@ public class CatalogServiceMongo : ICatalogService
     {
         _logger.LogInformation("[GetAllCatalogsAsync] Iniciando consulta - UserEmail: '{Email}', UserRole: '{Role}'", userEmail ?? "NULL", userRole ?? "NULL");
 
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede ver todos los catálogos
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Empty;
+        if (RoleHelper.IsAdmin(userRole))
             _logger.LogInformation("[GetAllCatalogsAsync] Filtro aplicado: Admin - Ver todos los catálogos");
-        }
-        // Si es usuario normal, solo puede ver sus propios catálogos
         else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail);
-            _logger.LogInformation("[GetAllCatalogsAsync] Filtro aplicado: Usuario normal - Solo catálogos de '{Email}'", userEmail);
-        }
-        // Si no hay información del usuario, no mostrar nada
+            _logger.LogInformation("[GetAllCatalogsAsync] Filtro aplicado: Usuario normal - Propietario/createdBy (regex) '{Email}'", userEmail);
         else
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, "nonexistent");
             _logger.LogWarning("[GetAllCatalogsAsync] Filtro aplicado: Sin usuario - No mostrar nada");
+
+        var access = CatalogBsonDeserializer.BuildAccessFilter(userEmail, userRole);
+        var docs = await _context.CatalogsBson.Find(access).ToListAsync();
+
+        var catalogs = new List<Catalog>();
+        foreach (var doc in docs)
+        {
+            var c = CatalogBsonDeserializer.TryDeserialize(doc, _logger);
+            if (c != null)
+                catalogs.Add(c);
         }
 
-        var catalogs = await _context.Catalogs
-            .Find(filter)
-            .SortByDescending(c => c.CreatedAt)
-            .ToListAsync();
+        catalogs.Sort((a, b) => b.CreatedAt.CompareTo(a.CreatedAt));
 
         _logger.LogInformation("[GetAllCatalogsAsync] Catálogos encontrados: {Count}", catalogs.Count);
 
-        // Log de los primeros 3 catálogos para debug
         foreach (var catalog in catalogs.Take(3))
         {
             _logger.LogInformation("[GetAllCatalogsAsync] Catálogo: ID={Id}, Name='{Name}', CreatedBy='{CreatedBy}', CreatedAt={CreatedAt}",
@@ -59,33 +55,8 @@ public class CatalogServiceMongo : ICatalogService
         return catalogs;
     }
 
-    public async Task<Catalog?> GetCatalogByIdAsync(string id, string? userEmail = null, string? userRole = null)
-    {
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede ver cualquier catálogo
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, id);
-        }
-        // Si es usuario normal, solo puede ver sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.And(
-                Builders<Catalog>.Filter.Eq(c => c.Id, id),
-                Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail)
-            );
-        }
-        // Si no hay información del usuario, no mostrar nada
-        else
-        {
-            return null;
-        }
-
-        return await _context.Catalogs
-            .Find(filter)
-            .FirstOrDefaultAsync();
-    }
+    public async Task<Catalog?> GetCatalogByIdAsync(string id, string? userEmail = null, string? userRole = null) =>
+        await FindCatalogForWriteAsync(id, userEmail, userRole);
 
     public async Task<Catalog> CreateCatalogAsync(CreateCatalogRequest request, string userEmail)
     {
@@ -126,30 +97,7 @@ public class CatalogServiceMongo : ICatalogService
 
     public async Task<Catalog?> UpdateCatalogAsync(string id, UpdateCatalogRequest request, string? userEmail = null, string? userRole = null)
     {
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede actualizar cualquier catálogo
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, id);
-        }
-        // Si es usuario normal, solo puede actualizar sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.And(
-                Builders<Catalog>.Filter.Eq(c => c.Id, id),
-                Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail)
-            );
-        }
-        // Si no hay información del usuario, no permitir actualización
-        else
-        {
-            return null;
-        }
-
-        var catalog = await _context.Catalogs
-            .Find(filter)
-            .FirstOrDefaultAsync();
+        var catalog = await FindCatalogForWriteAsync(id, userEmail, userRole);
 
         if (catalog == null)
             return null;
@@ -170,28 +118,19 @@ public class CatalogServiceMongo : ICatalogService
 
     public async Task<bool> DeleteCatalogAsync(string id, string? userEmail = null, string? userRole = null)
     {
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede eliminar cualquier catálogo
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, id);
-        }
-        // Si es usuario normal, solo puede eliminar sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.And(
-                Builders<Catalog>.Filter.Eq(c => c.Id, id),
-                Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail)
-            );
-        }
-        // Si no hay información del usuario, no permitir eliminación
-        else
-        {
+        if (!RoleHelper.IsAdmin(userRole) && string.IsNullOrEmpty(userEmail))
             return false;
+
+        var bsonFilter = CatalogBsonDeserializer.BuildIdFilter(id);
+        if (!RoleHelper.IsAdmin(userRole))
+        {
+            if (string.IsNullOrEmpty(userEmail))
+                return false;
+            bsonFilter = Builders<BsonDocument>.Filter.And(
+                bsonFilter, CatalogBsonDeserializer.BuildUserOwnershipFilter(userEmail));
         }
 
-        var result = await _context.Catalogs.DeleteOneAsync(filter);
+        var result = await _context.CatalogsBson.DeleteOneAsync(bsonFilter);
 
         if (result.DeletedCount > 0)
         {
@@ -204,63 +143,21 @@ public class CatalogServiceMongo : ICatalogService
 
     public async Task<List<Catalog>> SearchCatalogsAsync(string searchTerm, string? userEmail = null, string? userRole = null)
     {
-        FilterDefinition<Catalog> userFilter;
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return await GetAllCatalogsAsync(userEmail, userRole);
 
-        // Si es admin, puede buscar en todos los catálogos
-        if (userRole == "Admin")
-        {
-            userFilter = Builders<Catalog>.Filter.Empty;
-        }
-        // Si es usuario normal, solo puede buscar en sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            userFilter = Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail);
-        }
-        // Si no hay información del usuario, no mostrar nada
-        else
-        {
-            userFilter = Builders<Catalog>.Filter.Eq(c => c.Id, "nonexistent");
-        }
-
-        var searchFilter = Builders<Catalog>.Filter.Or(
-            Builders<Catalog>.Filter.Regex(c => c.Name, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i")),
-            Builders<Catalog>.Filter.Regex(c => c.Description, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i"))
-        );
-
-        var combinedFilter = Builders<Catalog>.Filter.And(userFilter, searchFilter);
-
-        return await _context.Catalogs
-            .Find(combinedFilter)
-            .SortByDescending(c => c.CreatedAt)
-            .ToListAsync();
+        var term = searchTerm.Trim();
+        var all = await GetAllCatalogsAsync(userEmail, userRole);
+        return all.Where(c =>
+            c.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrEmpty(c.Description) && c.Description.Contains(term, StringComparison.OrdinalIgnoreCase)) ||
+            (!string.IsNullOrEmpty(c.Category) && c.Category.Contains(term, StringComparison.OrdinalIgnoreCase))
+        ).ToList();
     }
 
     public async Task<Catalog?> AddRowAsync(string catalogId, CatalogRow catalogRow, string? userEmail = null, string? userRole = null)
     {
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede agregar filas a cualquier catálogo
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, catalogId);
-        }
-        // Si es usuario normal, solo puede agregar filas a sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.And(
-                Builders<Catalog>.Filter.Eq(c => c.Id, catalogId),
-                Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail)
-            );
-        }
-        // Si no hay información del usuario, no permitir
-        else
-        {
-            return null;
-        }
-
-        var catalog = await _context.Catalogs
-            .Find(filter)
-            .FirstOrDefaultAsync();
+        var catalog = await FindCatalogForWriteAsync(catalogId, userEmail, userRole);
 
         if (catalog == null)
             return null;
@@ -295,30 +192,7 @@ public class CatalogServiceMongo : ICatalogService
 
     public async Task<Catalog?> UpdateRowAsync(string catalogId, int rowIndex, CatalogRow catalogRow, string? userEmail = null, string? userRole = null)
     {
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede actualizar filas en cualquier catálogo
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, catalogId);
-        }
-        // Si es usuario normal, solo puede actualizar filas en sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.And(
-                Builders<Catalog>.Filter.Eq(c => c.Id, catalogId),
-                Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail)
-            );
-        }
-        // Si no hay información del usuario, no permitir
-        else
-        {
-            return null;
-        }
-
-        var catalog = await _context.Catalogs
-            .Find(filter)
-            .FirstOrDefaultAsync();
+        var catalog = await FindCatalogForWriteAsync(catalogId, userEmail, userRole);
 
         if (catalog == null)
             return null;
@@ -347,30 +221,7 @@ public class CatalogServiceMongo : ICatalogService
 
     public async Task<Catalog?> DeleteRowAsync(string catalogId, int rowIndex, string? userEmail = null, string? userRole = null)
     {
-        FilterDefinition<Catalog> filter;
-
-        // Si es admin, puede eliminar filas en cualquier catálogo
-        if (userRole == "Admin")
-        {
-            filter = Builders<Catalog>.Filter.Eq(c => c.Id, catalogId);
-        }
-        // Si es usuario normal, solo puede eliminar filas en sus propios catálogos
-        else if (!string.IsNullOrEmpty(userEmail))
-        {
-            filter = Builders<Catalog>.Filter.And(
-                Builders<Catalog>.Filter.Eq(c => c.Id, catalogId),
-                Builders<Catalog>.Filter.Eq(c => c.CreatedBy, userEmail)
-            );
-        }
-        // Si no hay información del usuario, no permitir
-        else
-        {
-            return null;
-        }
-
-        var catalog = await _context.Catalogs
-            .Find(filter)
-            .FirstOrDefaultAsync();
+        var catalog = await FindCatalogForWriteAsync(catalogId, userEmail, userRole);
 
         if (catalog == null)
             return null;
@@ -394,6 +245,20 @@ public class CatalogServiceMongo : ICatalogService
         _logger.LogInformation("Fila {Index} eliminada del catálogo {Name} con ID {Id}", rowIndex, catalog.Name, catalog.Id);
 
         return catalog;
+    }
+
+    private async Task<Catalog?> FindCatalogForWriteAsync(string catalogId, string? userEmail, string? userRole)
+    {
+        var f = CatalogBsonDeserializer.BuildIdFilter(catalogId);
+        if (!RoleHelper.IsAdmin(userRole))
+        {
+            if (string.IsNullOrEmpty(userEmail))
+                return null;
+            f = Builders<BsonDocument>.Filter.And(f, CatalogBsonDeserializer.BuildUserOwnershipFilter(userEmail));
+        }
+
+        var doc = await _context.CatalogsBson.Find(f).FirstOrDefaultAsync();
+        return doc == null ? null : CatalogBsonDeserializer.TryDeserialize(doc, _logger);
     }
 }
 

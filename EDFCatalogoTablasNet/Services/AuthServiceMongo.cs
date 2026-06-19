@@ -1,4 +1,6 @@
 using EDFCatalogoTablasNet.Models;
+using EDFCatalogoTablasNet;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
@@ -31,23 +33,8 @@ namespace EDFCatalogoTablasNet.Services
             _logger = logger;
         }
 
-        public bool IsAuthenticated
-        {
-            get
-            {
-                var session = _httpContextAccessor.HttpContext?.Session;
-                if (session != null)
-                {
-                    var sessionId = session.Id;
-                    var authState = _authStateService.GetUserAuth(sessionId);
-                    return authState != null;
-                }
-
-                // Fallback para Blazor Server cuando HttpContext no está disponible
-                // Intentar obtener desde las variables estáticas globales
-                return !string.IsNullOrEmpty(GetGlobalUserEmail());
-            }
-        }
+        public bool IsAuthenticated =>
+            !string.IsNullOrEmpty(CurrentUserEmail);
 
         public string? CurrentUserEmail
         {
@@ -58,28 +45,27 @@ namespace EDFCatalogoTablasNet.Services
                 {
                     var sessionId = session.Id;
                     var authState = _authStateService.GetUserAuth(sessionId);
-                    _logger.LogDebug("[CurrentUserEmail] Session available - SessionId: {SessionId}, AuthState: {AuthState}",
-                        sessionId, authState != null ? authState.Email : "NULL");
-                    return authState?.Email;
+                    if (authState != null)
+                    {
+                        _logger.LogDebug("[CurrentUserEmail] SessionId {SessionId} -> {Email}", sessionId, authState.Email);
+                        return authState.Email;
+                    }
+
+                    var fromSession = session.GetString(SESSION_USER_KEY);
+                    if (!string.IsNullOrEmpty(fromSession))
+                        return fromSession;
                 }
 
-                // Fallback 1: Usar CircuitId para Blazor Server
                 var circuitId = _circuitIdService.CircuitId;
                 if (!string.IsNullOrEmpty(circuitId))
                 {
-                    var circuitAuthState = _authStateService.GetUserAuth($"circuit_{circuitId}");
-                    if (circuitAuthState != null)
-                    {
-                        _logger.LogDebug("[CurrentUserEmail] Using circuit fallback - CircuitId: {CircuitId}, Email: {Email}",
-                            circuitId, circuitAuthState.Email);
-                        return circuitAuthState.Email;
-                    }
+                    var circuitAuth = _authStateService.GetUserAuth($"circuit_{circuitId}");
+                    if (circuitAuth != null)
+                        return circuitAuth.Email;
                 }
 
-                // Fallback 2: Variables globales estáticas
-                var globalEmail = GetGlobalUserEmail();
-                _logger.LogDebug("[CurrentUserEmail] Using global fallback: {Email}", globalEmail ?? "NULL");
-                return globalEmail;
+                // No usar estado estático por proceso: filtraría sesión ajena a Razor Pages (/login) y E2E.
+                return null;
             }
         }
 
@@ -92,108 +78,134 @@ namespace EDFCatalogoTablasNet.Services
                 {
                     var sessionId = session.Id;
                     var authState = _authStateService.GetUserAuth(sessionId);
-                    return authState?.Role;
+                    if (authState != null)
+                        return RoleHelper.NormalizeRole(authState.Role);
+
+                    if (!string.IsNullOrEmpty(session.GetString(SESSION_USER_KEY)))
+                        return RoleHelper.NormalizeRole(session.GetString("UserRole") ?? "User");
                 }
 
-                // Fallback 1: Usar CircuitId para Blazor Server
                 var circuitId = _circuitIdService.CircuitId;
                 if (!string.IsNullOrEmpty(circuitId))
                 {
-                    var circuitAuthState = _authStateService.GetUserAuth($"circuit_{circuitId}");
-                    if (circuitAuthState != null)
-                    {
-                        _logger.LogDebug("[CurrentUserRole] Using circuit fallback - CircuitId: {CircuitId}, Role: {Role}",
-                            circuitId, circuitAuthState.Role);
-                        return circuitAuthState.Role;
-                    }
+                    var circuitAuth = _authStateService.GetUserAuth($"circuit_{circuitId}");
+                    if (circuitAuth != null)
+                        return RoleHelper.NormalizeRole(circuitAuth.Role);
                 }
 
-                // Fallback 2: Variables globales estáticas
-                return GetGlobalUserRole();
+                return null;
             }
         }
 
         public event EventHandler<bool>? AuthenticationStateChanged;
 
-        // Variables estáticas globales para fallback en Blazor Server
-        private static string? _globalUserEmail;
-        private static string? _globalUserRole;
-        private static readonly object _globalLock = new object();
-
-        private string? GetGlobalUserEmail()
+        public void NotifyAuthenticationStateChanged()
         {
-            lock (_globalLock)
-            {
-                return _globalUserEmail;
-            }
-        }
-
-        private string? GetGlobalUserRole()
-        {
-            lock (_globalLock)
-            {
-                return _globalUserRole;
-            }
-        }
-
-        private void SetGlobalUser(string? email, string? role)
-        {
-            lock (_globalLock)
-            {
-                _globalUserEmail = email;
-                _globalUserRole = role;
-            }
+            AuthenticationStateChanged?.Invoke(this, IsAuthenticated);
         }
 
         public async Task<User?> LoginAsync(string email, string password)
         {
             try
             {
-                var user = await _context.Users
-                    .Find(u => u.Email.ToLower() == email.ToLower() && u.IsActive)
+                var key = email.Trim();
+                if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(password))
+                    return null;
+
+                var collName = _context.Users.CollectionNamespace.CollectionName;
+                var bsonUsers = MongoUserBsonHelper.UsersCollection(_context.Database, collName);
+                var doc = await bsonUsers
+                    .Find(MongoUserBsonHelper.LoginKeyFilter(key))
                     .FirstOrDefaultAsync();
 
-                if (user != null && VerifyPassword(password, user.Password))
+                if (doc == null)
                 {
-                    // Actualizar última vez que inició sesión
-                    user.LastLoginAt = DateTime.Now;
-                    await _context.Users.ReplaceOneAsync(u => u.Id == user.Id, user);
-
-                    // Guardar en sesión
-                    var session = _httpContextAccessor.HttpContext?.Session;
-                    if (session != null)
-                    {
-                        session.SetString(SESSION_USER_KEY, user.Email);
-                        session.SetString("UserRole", user.Role);
-
-                        // Guardar en AuthStateService
-                        _authStateService.SetUserAuth(session.Id, user.Email, user.Role);
-                        _logger.LogInformation("[LoginAsync] Session saved - SessionId: {SessionId}, Email: {Email}, Role: {Role}",
-                            session.Id, user.Email, user.Role);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("[LoginAsync] Session is NULL - cannot save session data");
-                    }
-
-                    // También guardar en variables globales para Blazor Server
-                    SetGlobalUser(user.Email, user.Role);
-                    _logger.LogInformation("[LoginAsync] Global variables set - Email: {Email}, Role: {Role}", user.Email, user.Role);
-
-                    AuthenticationStateChanged?.Invoke(this, true);
-                    _logger.LogInformation("Usuario {Email} inició sesión correctamente", email);
-
-                    return user;
+                    _logger.LogWarning("Intento de login fallido para {Key} (sin documento)", key);
+                    return null;
                 }
 
-                _logger.LogWarning("Intento de login fallido para {Email}", email);
-                return null;
+                if (!MongoUserBsonHelper.GetIsActive(doc))
+                {
+                    _logger.LogWarning("Intento de login con usuario inactivo: {Key}", key);
+                    return null;
+                }
+
+                var storedHash = MongoUserBsonHelper.GetStoredPasswordHash(doc);
+                if (string.IsNullOrEmpty(storedHash) || !VerifyPassword(password, storedHash))
+                {
+                    _logger.LogWarning("Intento de login fallido para {Key} (contraseña incorrecta o hash ausente)", key);
+                    return null;
+                }
+
+                var canonicalEmail = MongoUserBsonHelper.GetCanonicalEmail(doc);
+                if (string.IsNullOrEmpty(canonicalEmail))
+                {
+                    if (key.Contains('@', StringComparison.Ordinal))
+                        canonicalEmail = key;
+                    else
+                    {
+                        _logger.LogError("Login: documento sin Email/email en MongoDB para usuario {Key}", key);
+                        return null;
+                    }
+                }
+
+                var role = RoleHelper.NormalizeRole(MongoUserBsonHelper.GetRole(doc));
+                var id = doc["_id"].ToString();
+
+                var now = DateTime.UtcNow;
+                await bsonUsers.UpdateOneAsync(
+                    Builders<BsonDocument>.Filter.Eq("_id", doc["_id"]),
+                    Builders<BsonDocument>.Update.Set("LastLoginAt", now).Set("lastLoginAt", now));
+
+                var user = await _context.Users.Find(u => u.Id == id).FirstOrDefaultAsync();
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        Id = id,
+                        Email = canonicalEmail,
+                        Role = role,
+                        Name = GetBsonString(doc, "Name", "name") ?? canonicalEmail,
+                        LastLoginAt = now,
+                        IsActive = true
+                    };
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(user.Email) && !string.IsNullOrEmpty(canonicalEmail))
+                        user.Email = canonicalEmail;
+                    user.LastLoginAt = now;
+                }
+
+                var session = _httpContextAccessor.HttpContext?.Session;
+                if (session != null)
+                {
+                    session.SetString(SESSION_USER_KEY, canonicalEmail);
+                    session.SetString("UserRole", role);
+                    _authStateService.SetUserAuth(session.Id, canonicalEmail, role);
+                    _logger.LogInformation("[LoginAsync] Session saved - SessionId: {SessionId}, Email: {Email}, Role: {Role}",
+                        session.Id, canonicalEmail, role);
+                }
+                else
+                    _logger.LogWarning("[LoginAsync] Session is NULL - cannot save session data");
+
+                AuthenticationStateChanged?.Invoke(this, true);
+                _logger.LogInformation("Usuario {Email} inició sesión correctamente", canonicalEmail);
+
+                return user;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error en LoginAsync para {Email}", email);
                 return null;
             }
+        }
+
+        private static string? GetBsonString(BsonDocument doc, string pascalKey, string camelKey)
+        {
+            if (doc.TryGetValue(pascalKey, out var v) && v.IsString) return v.AsString;
+            if (doc.TryGetValue(camelKey, out v) && v.IsString) return v.AsString;
+            return null;
         }
 
         public async Task<bool> RegisterAsync(RegisterModel model)
@@ -238,13 +250,15 @@ namespace EDFCatalogoTablasNet.Services
             if (session != null)
             {
                 session.Remove(SESSION_USER_KEY);
+                session.Remove("UserRole");
 
                 // Limpiar AuthStateService
                 _authStateService.ClearUserAuth(session.Id);
             }
 
-            // También limpiar variables globales
-            SetGlobalUser(null, null);
+            var cid = _circuitIdService.CircuitId;
+            if (!string.IsNullOrEmpty(cid))
+                _authStateService.ClearUserAuth($"circuit_{cid}");
 
             AuthenticationStateChanged?.Invoke(this, false);
             _logger.LogInformation("Usuario cerró sesión");

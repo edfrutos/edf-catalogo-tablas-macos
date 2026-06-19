@@ -1,4 +1,5 @@
 using EDFCatalogoTablasNet.Models;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Security.Cryptography;
 using System.Text;
@@ -23,6 +24,8 @@ namespace EDFCatalogoTablasNet.Services
         {
             try
             {
+                await TryEnvPasswordResetAsync();
+
                 // Verificar si ya existe el usuario admin
                 var adminExists = await _context.Users
                     .Find(u => u.Email == "admin@edf.com")
@@ -106,6 +109,39 @@ namespace EDFCatalogoTablasNet.Services
                 _logger.LogError(ex, "❌ Error al inicializar la base de datos");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Si existen EDF_DEV_PASSWORD_RESET_EMAIL y EDF_DEV_PASSWORD_RESET_PLAIN, hace $set del hash (Pascal/camel en BSON).
+        /// Funciona en cualquier ASPNETCORE_ENVIRONMENT; quita las variables tras usar. No commitear la contraseña.
+        /// </summary>
+        private async Task TryEnvPasswordResetAsync()
+        {
+            var emailOrUser = Environment.GetEnvironmentVariable("EDF_DEV_PASSWORD_RESET_EMAIL")?.Trim();
+            var plain = Environment.GetEnvironmentVariable("EDF_DEV_PASSWORD_RESET_PLAIN");
+            if (string.IsNullOrEmpty(emailOrUser) || string.IsNullOrEmpty(plain))
+                return;
+
+            var collName = _context.Users.CollectionNamespace.CollectionName;
+            var bsonUsers = MongoUserBsonHelper.UsersCollection(_context.Database, collName);
+            var doc = await bsonUsers
+                .Find(MongoUserBsonHelper.LoginKeyFilter(emailOrUser))
+                .FirstOrDefaultAsync();
+
+            if (doc == null)
+            {
+                _logger.LogWarning("EDF_DEV_PASSWORD_RESET_*: no hay documento en '{Collection}' con email/username {Key}", collName, emailOrUser);
+                return;
+            }
+
+            var hash = HashPassword(plain);
+            await bsonUsers.UpdateOneAsync(
+                Builders<BsonDocument>.Filter.Eq("_id", doc["_id"]),
+                Builders<BsonDocument>.Update.Set("Password", hash));
+
+            var who = MongoUserBsonHelper.GetCanonicalEmail(doc);
+            if (string.IsNullOrEmpty(who)) who = emailOrUser;
+            _logger.LogWarning("Contraseña actualizada (hash) para {Who}. Quita EDF_DEV_PASSWORD_RESET_* y reinicia.", who);
         }
 
         private static string HashPassword(string password)

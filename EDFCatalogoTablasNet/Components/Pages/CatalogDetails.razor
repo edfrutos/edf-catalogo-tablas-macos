@@ -468,7 +468,9 @@ else
 
         try
         {
-            var updatedCatalog = await CatalogService.DeleteRowAsync(catalog.Id, rowIndex);
+            var userEmail = AuthService.CurrentUserEmail;
+            var userRole = AuthService.CurrentUserRole;
+            var updatedCatalog = await CatalogService.DeleteRowAsync(catalog.Id, rowIndex, userEmail, userRole);
 
             if (updatedCatalog != null)
             {
@@ -796,8 +798,3 @@ else
         }
     }
 }
-
-<!-- Modal para agregar filas -->
-<AddRowModal Headers="@(catalog?.Headers ?? Array.Empty<string>())"
-             OnRowSaved="HandleRowSaved" />
-

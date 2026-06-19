@@ -7,6 +7,7 @@ namespace EDFCatalogoTablasNet.Models;
 /// <summary>
 /// Modelo para representar un catálogo en el sistema
 /// </summary>
+[BsonIgnoreExtraElements]
 public class Catalog
 {
     [BsonId]

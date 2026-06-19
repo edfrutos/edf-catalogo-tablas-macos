@@ -7,6 +7,7 @@ namespace EDFCatalogoTablasNet.Models
     /// <summary>
     /// Modelo de Usuario para el sistema de autenticación
     /// </summary>
+    [BsonIgnoreExtraElements]
     public class User
     {
         [BsonId]
@@ -61,6 +62,13 @@ namespace EDFCatalogoTablasNet.Models
         /// </summary>
         [StringLength(100, ErrorMessage = "La ocupación no puede exceder 100 caracteres")]
         public string? Occupation { get; set; }
+
+        /// <summary>Nombre de usuario alternativo al email (coincide con campo Username en MongoDB).</summary>
+        [StringLength(100)]
+        public string? Username { get; set; }
+
+        [StringLength(200)]
+        public string? FullName { get; set; }
     }
 
     /// <summary>
