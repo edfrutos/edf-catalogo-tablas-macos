@@ -353,3 +353,9 @@ appsettings.*.json
 
 # Auxly - AI Task Management (internal data)
 .auxly/
+
+# Blazor WASM compiled output
+EDFCatalogoTablasNet/wwwroot/_framework/
+
+# Ficheros espurios
+clear
