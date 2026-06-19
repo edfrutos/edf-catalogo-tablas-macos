@@ -1,0 +1,26 @@
+# Dependencias de desarrollo en Apple Silicon (Homebrew en /opt/homebrew).
+# Uso: brew bundle
+#
+# .NET: se usa el CASK oficial de Microsoft (dotnet-sdk), NO el formula "dotnet",
+# porque el formula declara dependencia de "brotli" y un keg brotli corrupto tras
+# migración/backup hace fallar todo con "opt/brotli is not a valid keg".
+#
+# Antes del primer bundle (si tenías el SDK como formula):
+#   brew uninstall --force dotnet dotnet@9 2>/dev/null || true
+#
+# --no-binaries: el cask declara un "binary" obsoleto (/usr/local/share/dotnet/dnx) que
+# el SDK ya no instala; sin este flag, brew falla al enlazar aunque el .pkg sea correcto.
+# Ejecuta bundle en shell ARM64 (uname -m → arm64), no en Terminal con Rosetta (evita pkg x64).
+
+cask "dotnet-sdk", args: { "no-binaries" => true }
+brew "pcre2"
+
+# Opcional: formula brotli solo si otro software lo necesita y el keg está sano.
+# brew "brotli"
+#
+# Si insistes en el formula dotnet + brotli y el keg falla: ./scripts/fix-brew-brotli-keg.sh
+
+# Opcionales para este monorepo (descomenta si los usas desde consola)
+# brew "git"
+# brew "mongodb-community"
+# brew "mongosh"
